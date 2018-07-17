@@ -1,0 +1,8 @@
+[package]
+name = "hyper-microservice"
+version = "0.1.0"
+authors = ["Denis Kolodin <deniskolodin@gmail.com>"]
+
+[dependencies]
+failure = { git = "https://github.com/rust-lang-nursery/failure", version = "1.0" }
+hyper = "0.12"
