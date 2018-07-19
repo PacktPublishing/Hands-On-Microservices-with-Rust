@@ -1,7 +1,8 @@
 [package]
-name = "hyper-microservice"
+name = "hyper-microservice-with-handlers"
 version = "0.1.0"
 authors = ["Denis Kolodin <deniskolodin@gmail.com>"]
 
 [dependencies]
+futures = "0.1"
 hyper = "0.12"
