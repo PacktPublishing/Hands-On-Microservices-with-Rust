@@ -20,18 +20,18 @@ const INDEX: &'static str = r#"
 fn microservice_handler(req: Request<Body>)
     -> impl Future<Item=Response<Body>, Error=Error>
 {
-        match (req.method(), req.uri().path()) {
-            (&Method::GET, "/") => {
-                future::ok(Response::new(INDEX.into()))
-            },
-            _ => {
-                let response = Response::builder()
-                    .status(StatusCode::NOT_FOUND)
-                    .body(Body::empty())
-                    .unwrap();
-                future::ok(response)
-            },
-        }
+    match (req.method(), req.uri().path()) {
+        (&Method::GET, "/") => {
+            future::ok(Response::new(INDEX.into()))
+        },
+        _ => {
+            let response = Response::builder()
+                .status(StatusCode::NOT_FOUND)
+                .body(Body::empty())
+                .unwrap();
+            future::ok(response)
+        },
+    }
 }
 
 fn main() {
