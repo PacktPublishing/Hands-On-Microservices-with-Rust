@@ -1,0 +1,9 @@
+[package]
+name = "hyper-microservice-rest"
+version = "0.1.0"
+authors = ["Denis Kolodin <deniskolodin@gmail.com>"]
+
+[dependencies]
+slab = "0.4"
+futures = "0.1"
+hyper = "0.12"
