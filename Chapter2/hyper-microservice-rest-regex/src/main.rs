@@ -51,13 +51,21 @@ fn microservice_handler(req: Request<Body>, user_db: &UserDb)
         let path = req.uri().path();
         let mut users = user_db.lock().unwrap();
         if INDEX_PATH.is_match(path) {
-            Response::new(INDEX.into())
+            if method == &Method::GET {
+                Response::new(INDEX.into())
+            } else {
+                response_with_code(StatusCode::METHOD_NOT_ALLOWED)
+            }
         } else if USERS_PATH.is_match(path) {
-            let list = users.iter()
-                .map(|(id, _)| id.to_string())
-                .collect::<Vec<String>>()
-                .join(",");
-            Response::new(list.into())
+            if method == &Method::GET {
+                let list = users.iter()
+                    .map(|(id, _)| id.to_string())
+                    .collect::<Vec<String>>()
+                    .join(",");
+                Response::new(list.into())
+            } else {
+                response_with_code(StatusCode::METHOD_NOT_ALLOWED)
+            }
         } else if let Some(cap) = USER_PATH.captures(path) {
             let user_id = cap.name("user_id").and_then(|m| {
                 m.as_str()
