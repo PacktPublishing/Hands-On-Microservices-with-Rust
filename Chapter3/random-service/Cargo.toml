@@ -1,0 +1,8 @@
+[package]
+name = "random-service"
+version = "0.1.0"
+authors = ["Denis Kolodin <deniskolodin@gmail.com>"]
+
+[dependencies]
+hyper = "0.12"
+rand = "0.5"
