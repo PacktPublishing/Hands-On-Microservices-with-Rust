@@ -1,0 +1,11 @@
+[package]
+name = "random-service-with-env"
+version = "0.1.0"
+authors = ["Denis Kolodin <deniskolodin@gmail.com>"]
+
+[dependencies]
+log = "0.4"
+pretty_env_logger = "0.2"
+dotenv = "0.13"
+hyper = "0.12"
+rand = "0.5"
