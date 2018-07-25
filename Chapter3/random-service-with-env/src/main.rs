@@ -1,6 +1,6 @@
 #[macro_use]
 extern crate log;
-extern crate pretty_env_logger as logger;
+extern crate env_logger as logger;
 extern crate dotenv;
 extern crate hyper;
 extern crate rand;
