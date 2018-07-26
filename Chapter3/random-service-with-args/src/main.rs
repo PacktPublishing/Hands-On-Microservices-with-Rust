@@ -17,7 +17,6 @@ use hyper::service::service_fn_ok;
 fn main() {
     dotenv().ok();
     logger::init();
-    info!("Rand Microservice - v0.1.0");
     let matches = App::new(crate_name!())
         .version(crate_version!())
         .author(crate_authors!())
@@ -35,6 +34,7 @@ fn main() {
              .help("Sets an address")
              .takes_value(true))
         .get_matches();
+    info!("Rand Microservice - v0.1.0");
     trace!("Starting...");
     let addr = matches.value_of("address")
         .map(|s| s.to_owned())
