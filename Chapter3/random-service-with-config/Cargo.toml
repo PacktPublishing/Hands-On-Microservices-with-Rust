@@ -1,5 +1,5 @@
 [package]
-name = "random-service-with-args"
+name = "random-service-with-config"
 version = "0.1.0"
 authors = ["Denis Kolodin <deniskolodin@gmail.com>"]
 
@@ -10,3 +10,6 @@ dotenv = "0.13"
 clap = "2.32"
 hyper = "0.12"
 rand = "0.5"
+serde = "1.0"
+serde_derive = "1.0"
+toml = "0.4"
