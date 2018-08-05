@@ -63,22 +63,12 @@ fn microservice_handler(req: Request<Body>)
         (&Method::POST, "/random") => {
             let body = req.into_body().concat2()
                 .map(|chunks| {
-                    let request = serde_json::from_slice::<RngRequest>(chunks.as_ref());
-                    match request {
-                        Ok(request) => {
-                            let resp = handle_request(request);
-                            let body = serde_json::to_string(&resp);
-                            match body {
-                                Ok(body) => {
-                                    Response::new(body.into())
-                                },
-                                Err(err) => {
-                                    Response::builder()
-                                        .status(StatusCode::INTERNAL_SERVER_ERROR)
-                                        .body(err.to_string().into())
-                                        .unwrap()
-                                },
-                            }
+                    let res = serde_json::from_slice::<RngRequest>(chunks.as_ref())
+                        .map(handle_request)
+                        .and_then(|resp| serde_json::to_string(&resp));
+                    match res {
+                        Ok(body) => {
+                            Response::new(body.into())
                         },
                         Err(err) => {
                             Response::builder()
@@ -93,7 +83,7 @@ fn microservice_handler(req: Request<Body>)
         _ => {
             let resp = Response::builder()
                 .status(StatusCode::NOT_FOUND)
-                .body("".into())
+                .body("Not Found".into())
                 .unwrap();
             Box::new(future::ok(resp))
         },
