@@ -35,6 +35,24 @@ struct RngResponse {
     value: f64,
 }
 
+fn handle_request(request: RngRequest) -> RngResponse {
+    let mut rng = rand::thread_rng();
+    let value = {
+        match request {
+            RngRequest::Uniform { range } => {
+                rng.sample(Uniform::from(range)) as f64
+            },
+            RngRequest::Normal { mean, std_dev } => {
+                rng.sample(Normal::new(mean, std_dev)) as f64
+            },
+            RngRequest::Bernoulli { p } => {
+                rng.sample(Bernoulli::new(p)) as i8 as f64
+            },
+        }
+    };
+    RngResponse { value }
+}
+
 fn microservice_handler(req: Request<Body>)
     -> Box<Future<Item=Response<Body>, Error=Error> + Send>
 {
@@ -44,41 +62,29 @@ fn microservice_handler(req: Request<Body>)
         },
         (&Method::POST, "/random") => {
             let body = req.into_body().concat2()
-                .and_then(|chunks| {
+                .map(|chunks| {
                     let request = serde_json::from_slice::<RngRequest>(chunks.as_ref());
-                    let mut rng = rand::thread_rng();
-                    let value = {
-                        match request {
-                            Ok(RngRequest::Uniform { range }) => {
-                                rng.sample(Uniform::from(range)) as f64
-                            },
-                            Ok(RngRequest::Normal { mean, std_dev }) => {
-                                rng.sample(Normal::new(mean, std_dev)) as f64
-                            },
-                            Ok(RngRequest::Bernoulli { p }) => {
-                                rng.sample(Bernoulli::new(p)) as i8 as f64
-                            },
-                            Err(err) => {
-                                let resp = Response::builder()
-                                    .status(StatusCode::UNPROCESSABLE_ENTITY)
-                                    .body(err.to_string().into())
-                                    .unwrap();
-                                return Ok(resp);
-                            },
-                        }
-                    };
-                    let resp = RngResponse { value };
-                    let body = serde_json::to_string(&resp);
-                    match body {
-                        Ok(body) => {
-                            Ok(Response::new(body.into()))
+                    match request {
+                        Ok(request) => {
+                            let resp = handle_request(request);
+                            let body = serde_json::to_string(&resp);
+                            match body {
+                                Ok(body) => {
+                                    Response::new(body.into())
+                                },
+                                Err(err) => {
+                                    Response::builder()
+                                        .status(StatusCode::INTERNAL_SERVER_ERROR)
+                                        .body(err.to_string().into())
+                                        .unwrap()
+                                },
+                            }
                         },
                         Err(err) => {
-                            let resp = Response::builder()
-                                .status(StatusCode::INTERNAL_SERVER_ERROR)
+                            Response::builder()
+                                .status(StatusCode::UNPROCESSABLE_ENTITY)
                                 .body(err.to_string().into())
-                                .unwrap();
-                            Ok(resp)
+                                .unwrap()
                         },
                     }
                 });
