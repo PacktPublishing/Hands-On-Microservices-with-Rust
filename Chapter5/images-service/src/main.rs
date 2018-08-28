@@ -4,6 +4,7 @@ extern crate rand;
 extern crate futures;
 extern crate tokio;
 extern crate hyper;
+extern crate hyper_staticfile;
 
 use std::io;
 use std::fs;
@@ -14,6 +15,7 @@ use futures::{future, Future, Stream};
 use tokio::fs::File;
 use hyper::{Body, Method, Request, Response, Server, StatusCode};
 use hyper::service::service_fn;
+use hyper_staticfile::FileChunkStream;
 
 static INDEX: &[u8] = b"Images Microservice";
 
@@ -40,7 +42,7 @@ impl From<io::Error> for Error {
 fn microservice_handler(req: Request<Body>, files: &Path)
     -> Box<Future<Item=Response<Body>, Error=String> + Send>
 {
-    match (req.method(), req.uri().path()) {
+    match (req.method(), req.uri().path().to_owned().as_ref()) {
         (&Method::GET, "/") => {
             Box::new(future::ok(Response::new(INDEX.into())))
         },
@@ -56,7 +58,6 @@ fn microservice_handler(req: Request<Body>, files: &Path)
                     .fold(file, |file, chunk| {
                     tokio::io::write_all(file, chunk)
                         .map(|(file, _)| file)
-                        .map_err(Error::from)
                 })
             });
             let body = write.map(|_| {
@@ -64,9 +65,14 @@ fn microservice_handler(req: Request<Body>, files: &Path)
             }).map_err(|err| err.to_string());
             Box::new(body)
         },
-        (&Method::GET, "/download") => {
-            let body = Response::new("".into());
-            Box::new(future::ok(body))
+        (&Method::GET, path) if path.starts_with("/download") => {
+            let mut filepath = files.to_path_buf();
+            let open_file = File::open(filepath);
+            let body = open_file.map(|file| {
+                let chunks = FileChunkStream::new(file);
+                Response::new(Body::wrap_stream(chunks))
+            }).map_err(|err| err.to_string());
+            Box::new(body)
         },
         _ => {
             let resp = Response::builder()
