@@ -1,0 +1,9 @@
+[package]
+name = "futures-examples"
+version = "0.1.0"
+authors = ["Denis Kolodin <deniskolodin@gmail.com>"]
+
+[dependencies]
+failure = "0.1"
+futures = "0.1"
+tokio = "0.1"
