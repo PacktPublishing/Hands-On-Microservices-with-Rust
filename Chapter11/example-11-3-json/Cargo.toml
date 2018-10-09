@@ -1,0 +1,10 @@
+[package]
+name = "example-11-3-json"
+version = "0.1.0"
+authors = ["Denis Kolodin <deniskolodin@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+serde = "1"
+serde_derive = "1"
+actix-web = "0.7"
