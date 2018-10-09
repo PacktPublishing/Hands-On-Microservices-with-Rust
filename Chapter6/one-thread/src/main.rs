@@ -1,26 +1,17 @@
-#[macro_use]
-extern crate lazy_static;
-extern crate regex;
 extern crate futures;
-extern crate tokio;
 extern crate hyper;
 extern crate serde_json;
-extern crate hyper_staticfile;
 extern crate image;
 extern crate queryst;
 
+use image::{ImageResult, FilterType};
 use std::io::{Error, ErrorKind};
-use std::fs;
 use std::thread;
-use std::path::Path;
-use regex::Regex;
 use futures::{future, Future, Sink, Stream};
 use futures::sync::{mpsc, oneshot};
 use serde_json::Value;
-use tokio::fs::File;
 use hyper::{Body, Method, Request, Response, Server, StatusCode};
 use hyper::service::service_fn;
-use hyper_staticfile::FileChunkStream;
 
 static INDEX: &[u8] = b"Resize Microservice";
 
@@ -39,7 +30,7 @@ fn start_worker() -> mpsc::Sender<WorkerRequest> {
         let requests = rx.wait();
         for req in requests {
             if let Ok(req) = req {
-                let resp = convert(req.buffer, req.width, req.height);
+                let resp = convert(req.buffer, req.width, req.height).map_err(other);
                 req.tx.send(resp).ok();
             }
         }
@@ -47,12 +38,12 @@ fn start_worker() -> mpsc::Sender<WorkerRequest> {
     tx
 }
 
-fn convert(data: Vec<u8>, width: u16, height: u16) -> Result<Vec<u8>, Error> {
-    let format = image::guess_format(&data).map_err(other)?;
-    let img = image::load_from_memory(&data).map_err(other)?;
-    let scaled = img.resize(width as u32, height as u32, image::FilterType::Lanczos3);
+fn convert(data: Vec<u8>, width: u16, height: u16) -> ImageResult<Vec<u8>> {
+    let format = image::guess_format(&data)?;
+    let img = image::load_from_memory(&data)?;
+    let scaled = img.resize(width as u32, height as u32, FilterType::Lanczos3);
     let mut result = Vec::new();
-    scaled.write_to(&mut result, format).map_err(other);
+    scaled.write_to(&mut result, format)?;
     Ok(result)
 }
 
