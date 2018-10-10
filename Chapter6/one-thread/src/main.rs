@@ -1,7 +1,6 @@
 #[macro_use]
 extern crate lazy_static;
 extern crate regex;
-extern crate rand;
 extern crate futures;
 extern crate tokio;
 extern crate hyper;
@@ -15,8 +14,6 @@ use std::fs;
 use std::thread;
 use std::path::Path;
 use regex::Regex;
-use rand::{thread_rng, Rng};
-use rand::distributions::Alphanumeric;
 use futures::{future, Future, Sink, Stream};
 use futures::sync::{mpsc, oneshot};
 use serde_json::Value;
@@ -31,25 +28,32 @@ struct WorkerRequest {
     buffer: Vec<u8>,
     width: u16,
     height: u16,
-    tx: oneshot::Sender<Result<WorkerResponse, Error>>,
+    tx: oneshot::Sender<WorkerResponse>,
 }
 
-struct WorkerResponse {
-    buffer: Vec<u8>,
-}
+type WorkerResponse = Result<Vec<u8>, Error>;
 
 fn start_worker() -> mpsc::Sender<WorkerRequest> {
-    let (tx, rx) = mpsc::channel(1);
+    let (tx, rx) = mpsc::channel::<WorkerRequest>(1);
     thread::spawn(move || {
         let requests = rx.wait();
         for req in requests {
+            if let Ok(req) = req {
+                let resp = convert(req.buffer, req.width, req.height);
+                req.tx.send(resp).ok();
+            }
         }
     });
     tx
 }
 
 fn convert(data: Vec<u8>, width: u16, height: u16) -> Result<Vec<u8>, Error> {
-    Err(other("not implemented"))
+    let format = image::guess_format(&data).map_err(other)?;
+    let img = image::load_from_memory(&data).map_err(other)?;
+    let scaled = img.resize(width as u32, height as u32, image::FilterType::Lanczos3);
+    let mut result = Vec::new();
+    scaled.write_to(&mut result, format).map_err(other);
+    Ok(result)
 }
 
 fn other<E>(err: E) -> Error
@@ -101,7 +105,7 @@ fn microservice_handler(tx: mpsc::Sender<WorkerRequest>, req: Request<Body>)
                         .and_then(|x| x)
                 })
                 .map(|resp| {
-                    Response::new(resp.buffer.into())
+                    Response::new(resp.into())
                 });
             Box::new(body)
         },
