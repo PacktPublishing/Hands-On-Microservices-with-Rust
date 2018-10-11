@@ -21,8 +21,8 @@ fn create_user(conn: &Connection, name: &str, email: &str) -> Result<(), Error> 
         .map(drop)
 }
 
-const SUB_CREATE: &str = "create";
-const SUB_ADD: &str = "add";
+const CMD_CRATE: &str = "create";
+const CMD_ADD: &str = "add";
 
 fn main() -> Result<(), Error> {
 
@@ -39,18 +39,19 @@ fn main() -> Result<(), Error> {
             .help("Sets an address of db connection")
             .takes_value(true),
             )
-        .subcommand(SubCommand::with_name(SUB_CREATE).about("create users table"))
-        .subcommand(SubCommand::with_name(SUB_ADD).about("add user to the table"))
+        .subcommand(SubCommand::with_name(CMD_CRATE).about("create users table"))
+        .subcommand(SubCommand::with_name(CMD_ADD).about("add user to the table"))
         .get_matches();
 
     let addr = matches.value_of("database")
         .unwrap_or("postgres://postgres@localhost:5433");
     let conn = Connection::connect(addr, TlsMode::None)?;
+
     match matches.subcommand() {
-        (SUB_CREATE, _) => {
+        (CMD_CRATE, _) => {
             create_table(&conn)?;
         }
-        (SUB_ADD, Some(matches)) => {
+        (CMD_ADD, Some(matches)) => {
             let name = matches.value_of("name").unwrap();
             let email = matches.value_of("email").unwrap();
             create_user(&conn, name, email)?;
@@ -59,5 +60,6 @@ fn main() -> Result<(), Error> {
             matches.usage(); // but unreachable
         }
     }
+
     Ok(())
 }
