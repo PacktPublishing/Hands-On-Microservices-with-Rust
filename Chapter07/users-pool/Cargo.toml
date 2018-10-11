@@ -1,0 +1,15 @@
+[package]
+name = "users-pool"
+version = "0.1.0"
+authors = ["Denis Kolodin <deniskolodin@gmail.com>"]
+
+[dependencies]
+clap = "2.32"
+csv = "1.0"
+failure = "0.1"
+postgres = "0.15"
+r2d2 = "0.8"
+r2d2_postgres = "0.14"
+rayon = "1.0"
+serde = "1.0"
+serde_derive = "1.0"
