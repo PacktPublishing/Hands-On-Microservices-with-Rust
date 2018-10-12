@@ -1,0 +1,7 @@
+[package]
+name = "emails-gotham"
+version = "0.1.0"
+authors = ["Denis Kolodin <deniskolodin@gmail.com>"]
+
+[dependencies]
+gotham = "0.3"
