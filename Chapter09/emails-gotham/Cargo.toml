@@ -1,9 +1,0 @@
-[package]
-name = "emails-gotham"
-version = "0.1.0"
-authors = ["Denis Kolodin <deniskolodin@gmail.com>"]
-
-[dependencies]
-gotham = "0.3"
-lettre = "0.8"
-lettre_email = "0.8"
