@@ -21,8 +21,16 @@ fn create_user(conn: &Connection, name: &str, email: &str) -> Result<(), Error> 
         .map(drop)
 }
 
+fn list_users(conn: &Connection) -> Result<Vec<(String, String)>, Error> {
+    let res = conn.query("SELECT name, email FROM users", &[])?.into_iter()
+        .map(|row| (row.get(0), row.get(1)))
+        .collect();
+    Ok(res)
+}
+
 const CMD_CRATE: &str = "create";
 const CMD_ADD: &str = "add";
+const CMD_LIST: &str = "list";
 
 fn main() -> Result<(), Error> {
 
@@ -40,11 +48,20 @@ fn main() -> Result<(), Error> {
             .takes_value(true),
             )
         .subcommand(SubCommand::with_name(CMD_CRATE).about("create users table"))
-        .subcommand(SubCommand::with_name(CMD_ADD).about("add user to the table"))
+        .subcommand(SubCommand::with_name(CMD_ADD).about("add user to the table")
+                    .arg(Arg::with_name("NAME")
+                         .help("Sets the name of a user")
+                         .required(true)
+                         .index(1))
+                    .arg(Arg::with_name("EMAIL")
+                         .help("Sets the email of a user")
+                         .required(true)
+                         .index(2)))
+        .subcommand(SubCommand::with_name(CMD_LIST).about("print list of users"))
         .get_matches();
 
     let addr = matches.value_of("database")
-        .unwrap_or("postgres://postgres@localhost:5433");
+        .unwrap_or("postgres://postgres@localhost:5432");
     let conn = Connection::connect(addr, TlsMode::None)?;
 
     match matches.subcommand() {
@@ -52,9 +69,15 @@ fn main() -> Result<(), Error> {
             create_table(&conn)?;
         }
         (CMD_ADD, Some(matches)) => {
-            let name = matches.value_of("name").unwrap();
-            let email = matches.value_of("email").unwrap();
+            let name = matches.value_of("NAME").unwrap();
+            let email = matches.value_of("EMAIL").unwrap();
             create_user(&conn, name, email)?;
+        }
+        (CMD_LIST, _) => {
+            let list = list_users(&conn)?;
+            for (name, email) in list {
+                println!("Name: {:20}    Email: {:20}", name, email);
+            }
         }
         _ => {
             matches.usage(); // but unreachable
