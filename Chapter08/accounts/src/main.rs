@@ -53,7 +53,16 @@ fn main() -> Result<(), Error> {
             .help("Sets a file name of a database")
             .takes_value(true),
             )
-        .subcommand(SubCommand::with_name(CMD_ADD).about("add user to the table"))
+        .subcommand(SubCommand::with_name(CMD_ADD).about("add user to the table")
+                    .arg(Arg::with_name("NAME")
+                         .help("Sets the name of a user")
+                         .required(true)
+                         .index(1))
+                    .arg(Arg::with_name("EMAIL")
+                         .help("Sets the email of a user")
+                         .required(true)
+                         .index(2)))
+        .subcommand(SubCommand::with_name(CMD_LIST).about("prints a list with users"))
         .get_matches();
 
     let path = matches.value_of("database")
@@ -66,15 +75,14 @@ fn main() -> Result<(), Error> {
     match matches.subcommand() {
         (CMD_ADD, Some(matches)) => {
             let conn = pool.get()?;
-            let name = matches.value_of("name").unwrap();
-            let email = matches.value_of("email").unwrap();
+            let name = matches.value_of("NAME").unwrap();
+            let email = matches.value_of("EMAIL").unwrap();
             create_user(&conn, name, email)?;
         }
-        (CMD_LIST, Some(matches)) => {
+        (CMD_LIST, _) => {
             use self::schema::users::dsl::*;
             let conn = pool.get()?;
             let mut items = users
-                //.filter(id.eq(&uuid))
                 .load::<models::User>(&conn)?;
             for user in items {
                 println!("{:?}", user);
