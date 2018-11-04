@@ -2,15 +2,10 @@ extern crate failure;
 #[macro_use]
 extern crate nickel;
 extern crate lettre;
-extern crate log;
 
 use failure::{format_err, Error};
-use lettre::smtp::authentication::{Credentials, Mechanism};
 use lettre::{SendableEmail, EmailAddress, Envelope, SmtpClient, SmtpTransport, Transport};
-use lettre::smtp::extension::ClientId;
-use lettre::smtp::ConnectionReuseParameters;
-use log::error;
-use nickel::{Action, Nickel, HttpRouter, JsonBody, FormBody, Request, Response, MiddlewareResult, NickelError, Params};
+use nickel::{Action, Nickel, HttpRouter, FormBody, Request, Response, MiddlewareResult};
 use nickel::status::StatusCode;
 use nickel::template_cache::{ReloadPolicy, TemplateCache};
 use std::collections::HashMap;
@@ -23,12 +18,11 @@ fn spawn_sender() -> Sender<SendableEmail> {
     let client = SmtpClient::new_unencrypted_localhost()
         .expect("can't start smtp client");
     thread::spawn(move || {
-        let cache = TemplateCache::with_policy(ReloadPolicy::Always);
         let mut mailer = SmtpTransport::new(client);
         for email in rx.iter() {
             let result = mailer.send(email);
             if let Err(err) = result {
-                error!("Can't send mail: {}", err);
+                println!("Can't send mail: {}", err);
             }
         }
         mailer.close();
@@ -49,7 +43,7 @@ fn send_impl(req: &mut Request<Data>) -> Result<(), Error> {
     let mut params: HashMap<&str, &str> = HashMap::new();
     params.insert("code", &code);
     let mut body: Vec<u8> = Vec::new();
-    data.cache.render("templates/confirm.tpl", &mut body, &params);
+    data.cache.render("templates/confirm.tpl", &mut body, &params)?;
     let email = SendableEmail::new(envelope, "Confirm email".to_string(), Vec::new());
     let sender = data.sender.lock().unwrap().clone();
     sender.send(email).map_err(|_| format_err!("can't send email"))?;
@@ -78,5 +72,5 @@ fn main() {
     let mut server = Nickel::with_data(data);
     server.get("/", middleware!("Mailer Microservice"));
     server.post("/send", send);
-    server.listen("0.0.0.0:8080").unwrap();
+    server.listen("0.0.0.0:7000").unwrap();
 }
