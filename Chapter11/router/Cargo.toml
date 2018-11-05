@@ -1,0 +1,10 @@
+[package]
+name = "router"
+version = "0.1.0"
+authors = ["Denis Kolodin <deniskolodin@gmail.com>"]
+
+[dependencies]
+actix = "0.7"
+actix-web = "0.7"
+env_logger = "0.5"
+futures = "0.1"
