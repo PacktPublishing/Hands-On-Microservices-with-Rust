@@ -2,31 +2,45 @@ extern crate actix;
 extern crate actix_web;
 extern crate env_logger;
 extern crate futures;
+extern crate serde;
+extern crate serde_derive;
+extern crate serde_urlencoded;
 
 use actix_web::{
-    client, middleware, server, fs, App, AsyncResponder, Body, Error, HttpMessage,
+    client, middleware, server, fs, App, AsyncResponder, Body, Error, Form, HttpMessage,
     HttpRequest, HttpResponse,
 };
-use actix_web::http::header;
+use actix_web::http::{self, header};
 use actix_web::middleware::session;
-use futures::{Future, Stream};
+use actix_web::middleware::identity::RequestIdentity;
+use actix_web::middleware::identity::{CookieIdentityPolicy, IdentityService};
+use futures::{IntoFuture, Future, Stream};
+use serde::{Deserialize, Serialize};
+use serde_derive::{Deserialize, Serialize};
 
-fn request(url: &str) -> impl Future<Item = HttpResponse, Error = Error> {
+fn request<T>(url: &str, params: T) -> impl Future<Item = Vec<u8>, Error = Error>
+where
+    T: Serialize,
+{
     client::ClientRequest::post(url)
-        .finish().unwrap()
-        .send()
-        .map_err(Error::from)
-        .and_then(
-            |resp| resp.body()
-                .from_err()
-                .and_then(|body| {
-                    Ok(HttpResponse::Ok().body(body))
-                }))
-        .responder()
+        .form(params).into_future()
+        .and_then(|req| {
+            req.send()
+                .map_err(Error::from)
+                .and_then(|resp| resp.body().from_err())
+                .map(|bytes| bytes.to_vec())
+        })
 }
 
-fn signup(_req: &HttpRequest) -> Box<Future<Item = HttpResponse, Error = Error>> {
-    let fut = request("http://127.0.0.1:8000/signup")
+
+#[derive(Deserialize, Serialize)]
+pub struct UserForm {
+    email: String,
+    password: String,
+}
+
+fn signup(params: Form<UserForm>) -> Box<Future<Item = HttpResponse, Error = Error>> {
+    let fut = request("http://127.0.0.1:8000/signup", params.into_inner())
         .map(|_| {
             HttpResponse::Found()
             .header(header::LOCATION, "/login.html")
@@ -35,24 +49,15 @@ fn signup(_req: &HttpRequest) -> Box<Future<Item = HttpResponse, Error = Error>>
     Box::new(fut)
 }
 
-fn signin(_req: &HttpRequest) -> Box<Future<Item = HttpResponse, Error = Error>> {
-    Box::new(request("http://127.0.0.1:8000/signin"))
+fn signin(params: Form<UserForm>) -> Box<Future<Item = HttpResponse, Error = Error>> {
+    let fut = request("http://127.0.0.1:8000/signin", params.into_inner())
+        .map(|_| {
+            HttpResponse::Found()
+            .header(header::LOCATION, "/comments.html")
+            .finish()
+        });
+    Box::new(fut)
 }
-
-/*
-/// streaming client request to a streaming server response
-fn streaming(_req: &HttpRequest) -> Box<Future<Item = HttpResponse, Error = Error>> {
-    client::ClientRequest::get("https://www.rust-lang.org/en-US/")
-        .finish().unwrap()
-        .send()
-        .map_err(Error::from)
-        .and_then(|resp| {
-            Ok(HttpResponse::Ok()
-               .body(Body::Streaming(Box::new(resp.payload().from_err()))))
-        })
-        .responder()
-}
-*/
 
 fn main() {
     ::std::env::set_var("RUST_LOG", "actix_web=info");
@@ -62,12 +67,17 @@ fn main() {
     server::new(|| {
         App::new()
             .middleware(middleware::Logger::default())
-            .middleware(session::SessionStorage::new(
-                session::CookieSessionBackend::signed(&[0; 32]).secure(false)
-            ))
-            //.resource("/streaming", |r| r.f(streaming))
-            .resource("/signup", |r| r.f(signup))
-            .resource("/signin", |r| r.f(signin))
+            .middleware(IdentityService::new(
+                    CookieIdentityPolicy::new(&[0; 32])
+                    .name("auth-example")
+                    .secure(false),
+                    ))
+            .resource("/signup", |r| {
+                r.method(http::Method::POST).with(signup)
+            })
+            .resource("/signin", |r| {
+                r.method(http::Method::POST).with(signin)
+            })
             .handler(
                 "/",
                 fs::StaticFiles::new("./static/").unwrap().index_file("index.html")
