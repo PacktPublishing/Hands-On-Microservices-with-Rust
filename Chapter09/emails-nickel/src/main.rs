@@ -72,5 +72,5 @@ fn main() {
     let mut server = Nickel::with_data(data);
     server.get("/", middleware!("Mailer Microservice"));
     server.post("/send", send);
-    server.listen("0.0.0.0:7000").unwrap();
+    server.listen("0.0.0.0:8000").unwrap();
 }
