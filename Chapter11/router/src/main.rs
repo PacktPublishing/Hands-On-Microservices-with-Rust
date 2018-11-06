@@ -1,6 +1,7 @@
 extern crate actix;
 extern crate actix_web;
 extern crate env_logger;
+extern crate failure;
 extern crate futures;
 extern crate serde;
 extern crate serde_derive;
@@ -14,9 +15,17 @@ use actix_web::http::{self, header};
 use actix_web::middleware::session;
 use actix_web::middleware::identity::RequestIdentity;
 use actix_web::middleware::identity::{CookieIdentityPolicy, IdentityService};
+use failure::format_err;
 use futures::{IntoFuture, Future, Stream};
 use serde::{Deserialize, Serialize};
 use serde_derive::{Deserialize, Serialize};
+
+fn boxed<I, E, F>(fut: F) -> Box<Future<Item = I, Error = E>>
+where
+    F: Future<Item = I, Error = E> + 'static,
+{
+    Box::new(fut)
+}
 
 fn request<T>(url: &str, params: T) -> impl Future<Item = Vec<u8>, Error = Error>
 where
@@ -27,7 +36,19 @@ where
         .and_then(|req| {
             req.send()
                 .map_err(Error::from)
-                .and_then(|resp| resp.body().from_err())
+                .and_then(|resp| {
+                    if resp.status().is_success() {
+                        let fut = resp
+                            .body()
+                            .from_err();
+                        boxed(fut)
+                    } else {
+                        let fut = Err(format_err!("microservice error"))
+                            .into_future()
+                            .from_err();
+                        boxed(fut)
+                    }
+                })
                 .map(|bytes| bytes.to_vec())
         })
 }

@@ -1,3 +1,4 @@
+extern crate crypto;
 #[macro_use]
 extern crate diesel;
 extern crate env_logger;
@@ -7,10 +8,11 @@ extern crate log;
 extern crate rouille;
 extern crate serde_derive;
 
+use crypto::pbkdf2::{pbkdf2_check, pbkdf2_simple};
 use diesel::prelude::*;
 use diesel::dsl::{exists, select};
 use diesel::r2d2::ConnectionManager;
-use failure::Error;
+use failure::{format_err, Error};
 use log::debug;
 use rouille::{router, Request, Response};
 
@@ -51,7 +53,7 @@ fn handler(request: &Request, pool: &Pool) -> Result<Response, Error> {
             })?;
             debug!("Signup for {}", data.email);
             let user_email = data.email.trim().to_lowercase();
-            let user_password = data.password;
+            let user_password = pbkdf2_simple(&data.password, 12345)?;
             {
                 use self::schema::users::dsl::*;
                 let conn = pool.get()?;
@@ -89,10 +91,11 @@ fn handler(request: &Request, pool: &Pool) -> Result<Response, Error> {
                 let conn = pool.get()?;
                 let user = users.filter(email.eq(user_email))
                     .first::<models::User>(&conn)?;
-                // You have to use PBKDF2 here
-                if user.password == user_password {
-                    debug!("create JWT token");
-                    Response::text("token created")
+                let valid = pbkdf2_check(&user_password, &user.password)
+                    .map_err(|err| format_err!("pass check error: {}", err))?;
+                if valid {
+                    // grpc?
+                    Response::text(format!(r#"{{ "": {} }}"#, user.id))
                 } else {
                     Response::text("access denied")
                         .with_status_code(403)
