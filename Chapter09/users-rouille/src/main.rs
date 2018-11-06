@@ -15,11 +15,17 @@ use diesel::r2d2::ConnectionManager;
 use failure::{format_err, Error};
 use log::debug;
 use rouille::{router, Request, Response};
+use serde_derive::Serialize;
 
 type Pool = r2d2::Pool<ConnectionManager<SqliteConnection>>;
 
 mod models;
 mod schema;
+
+#[derive(Serialize)]
+struct UserId {
+    id: String,
+}
 
 fn main() {
     env_logger::init();
@@ -71,7 +77,7 @@ fn handler(request: &Request, pool: &Pool) -> Result<Response, Error> {
                         .values(&new_user)
                         .execute(&conn)?;
 
-                    Response::empty_204()
+                    Response::json(&())
                 } else {
                     Response::text(format!("user {} exists", data.email))
                         .with_status_code(400)
@@ -94,8 +100,12 @@ fn handler(request: &Request, pool: &Pool) -> Result<Response, Error> {
                 let valid = pbkdf2_check(&user_password, &user.password)
                     .map_err(|err| format_err!("pass check error: {}", err))?;
                 if valid {
+                    let user_id = UserId {
+                        id: user.id,
+                    };
                     // grpc?
-                    Response::text(format!(r#"{{ "": {} }}"#, user.id))
+                    Response::json(&user_id)
+                        .with_status_code(200)
                 } else {
                     Response::text("access denied")
                         .with_status_code(403)
