@@ -29,7 +29,7 @@ where
 }
 
 fn get_req(url: &str) -> impl Future<Item = Vec<u8>, Error = Error> {
-    client::ClientRequest::post(url)
+    client::ClientRequest::get(url)
         .finish().into_future()
         .and_then(|req| {
             req.send()
@@ -87,7 +87,7 @@ pub struct Comment {
 }
 
 fn signup(params: Form<UserForm>) -> FutureResponse<HttpResponse> {
-    let fut = request("http://127.0.0.1:8000/signup", params.into_inner())
+    let fut = request("http://127.0.0.1:8001/signup", params.into_inner())
         .map(|_: ()| {
             HttpResponse::Found()
             .header(header::LOCATION, "/login.html")
@@ -97,7 +97,7 @@ fn signup(params: Form<UserForm>) -> FutureResponse<HttpResponse> {
 }
 
 fn signin((req, params): (HttpRequest, Form<UserForm>)) -> FutureResponse<HttpResponse> {
-    let fut = request("http://127.0.0.1:8000/signin", params.into_inner())
+    let fut = request("http://127.0.0.1:8001/signin", params.into_inner())
         .map(move |id: UserId| {
             req.remember(id.id);
             HttpResponse::build_from(&req)
@@ -109,7 +109,7 @@ fn signin((req, params): (HttpRequest, Form<UserForm>)) -> FutureResponse<HttpRe
 }
 
 fn comments(req: HttpRequest) -> FutureResponse<HttpResponse> {
-    let fut = get_req("http://127.0.0.1:7000/list")
+    let fut = get_req("http://127.0.0.1:8003/list")
         .map(|data| {
             HttpResponse::Ok().body(data)
         });
@@ -128,10 +128,12 @@ fn main() {
                     .name("auth-example")
                     .secure(false),
                     ))
-            .resource("/signup", |r| {
-                r.method(http::Method::POST).with(signup)
+            .scope("/api", |scope| {
+                scope
+                    .route("/signup", http::Method::POST, signup)
+                    .route("/signin", http::Method::POST, signin)
+                    .route("/comments", http::Method::GET, comments)
             })
-            .route("/signin", http::Method::POST, signin)
             .handler(
                 "/",
                 fs::StaticFiles::new("./static/").unwrap().index_file("index.html")

@@ -33,7 +33,7 @@ fn main() {
     let pool = Pool::builder()
         .build(manager)
         .expect("Failed to create pool.");
-    rouille::start_server("127.0.0.1:8000", move |request| {
+    rouille::start_server("127.0.0.1:8001", move |request| {
         match handler(&request, &pool) {
             Ok(response) => {
                 response
