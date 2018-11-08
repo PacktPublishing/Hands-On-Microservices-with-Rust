@@ -86,6 +86,17 @@ pub struct Comment {
     pub text: String,
 }
 
+#[derive(Deserialize)]
+pub struct AddComment {
+    pub text: String,
+}
+
+#[derive(Serialize)]
+pub struct NewComment {
+    pub uid: String,
+    pub text: String,
+}
+
 fn signup(params: Form<UserForm>) -> FutureResponse<HttpResponse> {
     let fut = request("http://127.0.0.1:8001/signup", params.into_inner())
         .map(|_: ()| {
@@ -108,7 +119,28 @@ fn signin((req, params): (HttpRequest, Form<UserForm>)) -> FutureResponse<HttpRe
     Box::new(fut)
 }
 
-fn comments(req: HttpRequest) -> FutureResponse<HttpResponse> {
+fn new_comment((req, params): (HttpRequest, Form<AddComment>)) -> FutureResponse<HttpResponse> {
+    let fut = req.identity()
+        .ok_or(format_err!("not authorized").into())
+        .into_future()
+        .and_then(move |uid| {
+            let params = NewComment {
+                uid,
+                text: params.into_inner().text,
+            };
+            request::<_, ()>("http://127.0.0.1:8003/new_comment", params)
+        })
+        .then(move |_| {
+            let res = HttpResponse::build_from(&req)
+                .status(StatusCode::FOUND)
+                .header(header::LOCATION, "/comments.html")
+                .finish();
+            Ok(res)
+        });
+    Box::new(fut)
+}
+
+fn comments(_req: HttpRequest) -> FutureResponse<HttpResponse> {
     let fut = get_req("http://127.0.0.1:8003/list")
         .map(|data| {
             HttpResponse::Ok().body(data)
@@ -132,6 +164,7 @@ fn main() {
                 scope
                     .route("/signup", http::Method::POST, signup)
                     .route("/signin", http::Method::POST, signin)
+                    .route("/new_comment", http::Method::POST, new_comment)
                     .route("/comments", http::Method::GET, comments)
             })
             .handler(

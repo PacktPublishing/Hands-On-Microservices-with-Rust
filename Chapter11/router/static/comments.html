@@ -7,8 +7,12 @@
     <script src="script.js"></script>
   </head>
   <body>
-    <div id="comments">
-    </div>
+    <form action="/api/new_comment" method="post">
+        Comment:<br>
+        <input type="text" name="text"><br>
+        <button type="submit">Add</button>
+    </form>
+    <div id="comments"></div>
   </body>
 </html>
 
