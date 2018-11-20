@@ -4,12 +4,23 @@ services:
   db:
     image: postgres:latest
     restart: always
-    ports:
-      - 5432:5432
+    #ports:
+    #  - 5432:5432
     environment:
-      POSTGRES_PASSWORD: 'postgres'
+      POSTGRES_PASSWORD: 'password'
     volumes:
       - database_data:/var/lib/postgresql/data
+  smtp:
+    image: juanluisbaptiste/postfix
+    #ports:
+    #  - 25:25
+    environment:
+      SMTP_SERVER: 'smtp.example.com'
+      SMTP_USERNAME: 'admin@example.com'
+      SMTP_PASSWORD: 'password'
+      SERVER_HOSTNAME: 'smtp.example.com'
+  users:
+    build: ./microservices/users
 
 volumes:
   database_data:
