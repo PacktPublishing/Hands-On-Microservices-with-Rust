@@ -21,6 +21,8 @@ services:
       SERVER_HOSTNAME: 'smtp.example.com'
   users:
     build: ./microservices/users
+  mails:
+    build: ./microservices/mails
 
 volumes:
   database_data:
