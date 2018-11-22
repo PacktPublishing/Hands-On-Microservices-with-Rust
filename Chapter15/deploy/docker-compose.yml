@@ -23,6 +23,8 @@ services:
     build: ./microservices/users
   mails:
     build: ./microservices/mails
+  content:
+    build: ./microservices/content
 
 volumes:
   database_data:
