@@ -1,3 +1,4 @@
+extern crate config;
 extern crate crypto;
 #[macro_use]
 extern crate diesel;
@@ -27,7 +28,11 @@ struct UserId {
     id: String,
 }
 
-fn main() {
+fn main() -> Result<(), Error> {
+    let mut settings = config::Config::default();
+    settings
+        .merge(config::File::with_name("Settings"))?
+        .merge(config::Environment::with_prefix("APP"))?;
     env_logger::init();
     let manager = ConnectionManager::<SqliteConnection>::new("test.db");
     let pool = Pool::builder()

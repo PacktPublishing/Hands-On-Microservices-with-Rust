@@ -12,6 +12,7 @@ services:
       - database_data:/var/lib/postgresql/data
   smtp:
     image: juanluisbaptiste/postfix
+    restart: always
     #ports:
     #  - 25:25
     environment:
