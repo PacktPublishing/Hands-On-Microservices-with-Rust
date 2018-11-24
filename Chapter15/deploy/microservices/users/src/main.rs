@@ -2,6 +2,8 @@ extern crate config;
 extern crate crypto;
 #[macro_use]
 extern crate diesel;
+#[macro_use]
+extern crate diesel_migrations;
 extern crate env_logger;
 extern crate failure;
 extern crate log;
@@ -16,12 +18,20 @@ use diesel::r2d2::ConnectionManager;
 use failure::{format_err, Error};
 use log::debug;
 use rouille::{router, Request, Response};
-use serde_derive::Serialize;
+use serde_derive::{Deserialize, Serialize};
 
-type Pool = r2d2::Pool<ConnectionManager<SqliteConnection>>;
+type Pool = r2d2::Pool<ConnectionManager<PgConnection>>;
 
 mod models;
 mod schema;
+
+embed_migrations!();
+
+#[derive(Deserialize)]
+struct Config {
+    address: Option<String>,
+    database: Option<String>,
+}
 
 #[derive(Serialize)]
 struct UserId {
@@ -29,16 +39,21 @@ struct UserId {
 }
 
 fn main() -> Result<(), Error> {
-    let mut settings = config::Config::default();
-    settings
-        .merge(config::File::with_name("Settings"))?
+    let mut config = config::Config::default();
+    config
+        .merge(config::File::with_name("config"))?
         .merge(config::Environment::with_prefix("APP"))?;
+    let config: Config = config.try_into()?;
     env_logger::init();
-    let manager = ConnectionManager::<SqliteConnection>::new("test.db");
+    let bind_address = config.address.unwrap_or("0.0.0.0:8000".into());
+    let db_address = config.database.unwrap_or("postgres://localhost/".into());
+    let manager = ConnectionManager::<PgConnection>::new(db_address);
     let pool = Pool::builder()
         .build(manager)
         .expect("Failed to create pool.");
-    rouille::start_server("127.0.0.1:8001", move |request| {
+    let conn = pool.get()?;
+    embedded_migrations::run(&conn)?;
+    rouille::start_server(bind_address, move |request| {
         match handler(&request, &pool) {
             Ok(response) => {
                 response

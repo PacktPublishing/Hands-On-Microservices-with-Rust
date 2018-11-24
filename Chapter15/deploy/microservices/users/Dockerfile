@@ -5,4 +5,6 @@ COPY . .
 
 RUN cargo install --path /microservice
 
+EXPOSE 8000
+
 CMD ["users-microservice"]
