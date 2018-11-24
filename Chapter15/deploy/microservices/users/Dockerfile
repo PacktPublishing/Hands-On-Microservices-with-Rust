@@ -1,10 +1,17 @@
-FROM rust:1.30.1
+FROM rust:nightly
 
-WORKDIR /microservice
-COPY . .
+RUN USER=root cargo new --bin users-microservice
+WORKDIR /users-microservice
+COPY ./Cargo.toml ./Cargo.toml
+RUN cargo build
 
-RUN cargo install --path /microservice
+RUN rm src/*.rs
+COPY ./src ./src
+COPY ./migrations ./migrations
+COPY ./diesel.toml ./diesel.toml
+RUN rm ./target/debug/deps/users_microservice*
+RUN cargo build
+
+CMD ["./target/debug/users-microservice"]
 
 EXPOSE 8000
-
-CMD ["users-microservice"]

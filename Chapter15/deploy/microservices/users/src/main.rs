@@ -7,6 +7,7 @@ extern crate diesel_migrations;
 extern crate env_logger;
 extern crate failure;
 extern crate log;
+extern crate postgres;
 #[macro_use]
 extern crate rouille;
 extern crate serde_derive;
@@ -17,6 +18,7 @@ use diesel::dsl::{exists, select};
 use diesel::r2d2::ConnectionManager;
 use failure::{format_err, Error};
 use log::debug;
+use postgres::{Connection, TlsMode};
 use rouille::{router, Request, Response};
 use serde_derive::{Deserialize, Serialize};
 
@@ -41,12 +43,14 @@ struct UserId {
 fn main() -> Result<(), Error> {
     env_logger::init();
     let mut config = config::Config::default();
-    config
-        .merge(config::File::with_name("config"))?
-        .merge(config::Environment::with_prefix("USERS"))?;
+    config.merge(config::Environment::with_prefix("USERS"))?;
     let config: Config = config.try_into()?;
     let bind_address = config.address.unwrap_or("0.0.0.0:8000".into());
     let db_address = config.database.unwrap_or("postgres://localhost/".into());
+    debug!("Waiting for database...");
+    // Important to wait postgres will be available.
+    while Connection::connect(db_address.as_ref(), TlsMode::None).is_err() { }
+    debug!("Database connected");
     let manager = ConnectionManager::<PgConnection>::new(db_address);
     let pool = Pool::builder()
         .build(manager)

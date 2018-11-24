@@ -1,25 +1,16 @@
-# https://github.com/rust-lang-nursery/docker-rust-nightly/blob/master/nightly/Dockerfile
-FROM buildpack-deps:stretch
+FROM rust:nightly
 
-ENV RUSTUP_HOME=/usr/local/rustup \
-    CARGO_HOME=/usr/local/cargo \
-    PATH=/usr/local/cargo/bin:$PATH
+RUN USER=root cargo new --bin content-microservice
+WORKDIR /content-microservice
+COPY ./Cargo.toml ./Cargo.toml
+RUN cargo build
 
-RUN set -eux; \
-    \
-    url="https://static.rust-lang.org/rustup/dist/x86_64-unknown-linux-gnu/rustup-init"; \
-    wget "$url"; \
-    chmod +x rustup-init; \
-    ./rustup-init -y --no-modify-path --default-toolchain nightly; \
-    rm rustup-init; \
-    chmod -R a+w $RUSTUP_HOME $CARGO_HOME; \
-    rustup --version; \
-    cargo --version; \
-rustc --version;
+RUN rm src/*.rs
+COPY ./src ./src
+COPY ./migrations ./migrations
+RUN rm ./target/debug/deps/content_microservice*
+RUN cargo build
 
-WORKDIR /microservice
-COPY . .
+CMD ["./target/debug/content-microservice"]
 
-RUN cargo install --path /microservice
-
-CMD ["content-microservice"]
+EXPOSE 8000

@@ -12,14 +12,17 @@ extern crate log;
 extern crate serde_derive;
 #[macro_use]
 extern crate rocket_contrib;
+extern crate postgres;
 
 mod comment;
 
+use comment::{Comment, NewComment};
+use diesel::PgConnection;
+use postgres::{Connection, TlsMode};
 use rocket::fairing::AdHoc;
 use rocket::request::Form;
 use rocket_contrib::json::Json;
-use diesel::PgConnection;
-use comment::{Comment, NewComment};
+use rocket_contrib::databases::{database_config, ConfigError};
 
 embed_migrations!();
 
@@ -37,8 +40,20 @@ fn index(conn: Db) -> Json<Vec<Comment>> {
     Json(Comment::all(&conn))
 }
 
-fn main() {
+fn main() -> Result<(), ConfigError> {
     rocket::ignite()
+        .attach(AdHoc::on_attach("Database Waiting", |rocket| {
+            let config = rocket.config().clone();
+            let config = database_config("postgres_database", &config);
+            if config.is_err() {
+                return Err(rocket);
+            }
+            let config = config.unwrap();
+            debug!("Waiting for database...");
+            while Connection::connect(config.url, TlsMode::None).is_err() { }
+            debug!("Database connected");
+            Ok(rocket)
+        }))
         .attach(Db::fairing())
         .attach(AdHoc::on_attach("Database Migrations", |rocket| {
             let conn = Db::get_one(&rocket).expect("no database connection");
@@ -52,4 +67,5 @@ fn main() {
         }))
         .mount("/", routes![index, add_new])
         .launch();
+    Ok(())
 }

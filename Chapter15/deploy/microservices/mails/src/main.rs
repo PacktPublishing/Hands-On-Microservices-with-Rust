@@ -73,9 +73,7 @@ struct Config {
 fn main() -> Result<(), Error> {
     env_logger::init();
     let mut config = config::Config::default();
-    config
-        .merge(config::File::with_name("config"))?
-        .merge(config::Environment::with_prefix("MAILS"))?;
+    config.merge(config::Environment::with_prefix("MAILS"))?;
     let config: Config = config.try_into()?;
     let bind_address = config.address.unwrap_or("0.0.0.0:8000".into());
     let tx = spawn_sender();

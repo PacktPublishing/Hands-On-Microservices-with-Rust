@@ -1,8 +1,13 @@
 FROM rust:1.30.1
 
-WORKDIR /microservice
-COPY . .
+RUN USER=root cargo new --bin mails-microservice
+WORKDIR /mails-microservice
+COPY ./Cargo.toml ./Cargo.toml
+RUN cargo build
 
-RUN cargo install --path /microservice
+RUN rm src/*.rs
+COPY ./src ./src
+RUN rm ./target/debug/deps/mails_microservice*
+RUN cargo build
 
-CMD ["mails-microservice"]
+CMD ["./target/debug/mails-microservice"]

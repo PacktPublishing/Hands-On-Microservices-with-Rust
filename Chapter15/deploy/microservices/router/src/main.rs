@@ -154,7 +154,7 @@ fn comments(req: HttpRequest<State>) -> FutureResponse<HttpResponse> {
     Box::new(fut)
 }
 
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize)]
 struct Config {
     address: Option<String>,
     users: Option<String>,
@@ -180,10 +180,9 @@ impl State {
 fn main() -> Result<(), failure::Error> {
     env_logger::init();
     let mut config = config::Config::default();
-    config
-        .merge(config::File::with_name("config"))?
-        .merge(config::Environment::with_prefix("ROUTER"))?;
+    config.merge(config::Environment::with_prefix("ROUTER"))?;
     let config: Config = config.try_into()?;
+    debug!("Router config: {:?}", config);
     let sys = actix::System::new("router");
 
     let users = config.users.unwrap_or("http://127.0.0.1:8001".into());
