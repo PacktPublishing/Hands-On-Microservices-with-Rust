@@ -28,11 +28,11 @@ pub struct NewComment {
 }
 
 impl Comment {
-    pub fn all(conn: &SqliteConnection) -> Vec<Comment> {
+    pub fn all(conn: &PgConnection) -> Vec<Comment> {
         all_comments.order(comments::id.desc()).load::<Comment>(conn).unwrap()
     }
 
-    pub fn insert(comment: NewComment, conn: &SqliteConnection) -> bool {
+    pub fn insert(comment: NewComment, conn: &PgConnection) -> bool {
         let t = Comment { id: None, uid: comment.uid, text: comment.text };
         diesel::insert_into(comments::table).values(&t).execute(conn).is_ok()
     }

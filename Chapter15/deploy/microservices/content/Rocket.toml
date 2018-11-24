@@ -3,5 +3,5 @@ template_dir = "static"
 address = "127.0.0.1"
 port = 8003
 
-[global.databases.sqlite_database]
-url = "test.db"
+[global.databases.postgres_database]
+url = "postgres://localhost/"

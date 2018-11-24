@@ -1,13 +1,17 @@
+extern crate config;
+extern crate env_logger;
 extern crate failure;
 #[macro_use]
 extern crate nickel;
 extern crate lettre;
+extern crate serde_derive;
 
 use failure::{format_err, Error};
 use lettre::{SendableEmail, EmailAddress, Envelope, SmtpClient, SmtpTransport, Transport};
 use nickel::{Action, Nickel, HttpRouter, FormBody, Request, Response, MiddlewareResult};
 use nickel::status::StatusCode;
 use nickel::template_cache::{ReloadPolicy, TemplateCache};
+use serde_derive::Deserialize;
 use std::collections::HashMap;
 use std::thread;
 use std::sync::Mutex;
@@ -61,7 +65,19 @@ struct Data {
     cache: TemplateCache,
 }
 
-fn main() {
+#[derive(Deserialize)]
+struct Config {
+    address: Option<String>,
+}
+
+fn main() -> Result<(), Error> {
+    env_logger::init();
+    let mut config = config::Config::default();
+    config
+        .merge(config::File::with_name("config"))?
+        .merge(config::Environment::with_prefix("MAILS"))?;
+    let config: Config = config.try_into()?;
+    let bind_address = config.address.unwrap_or("0.0.0.0:8000".into());
     let tx = spawn_sender();
 
     let data = Data {
@@ -72,5 +88,6 @@ fn main() {
     let mut server = Nickel::with_data(data);
     server.get("/", middleware!("Mailer Microservice"));
     server.post("/send", send);
-    server.listen("127.0.0.1:8002").unwrap();
+    server.listen(bind_address).map_err(|_| format_err!(""))?;
+    Ok(())
 }

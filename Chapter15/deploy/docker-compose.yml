@@ -21,16 +21,42 @@ services:
       - SMTP_USERNAME=admin@example.com
       - SMTP_PASSWORD=password
       - SERVER_HOSTNAME=smtp.example.com
-  #users:
-    #build: ./microservices/users
-    #environment:
-      #- RUST_LOG=users_microservice=debug
-      #- USERS_ADDRESS=0.0.0.0:8000
-      #- USERS_DATABASE=postgresql://postgres:password@localhost:5432
-  #mails:
-    #build: ./microservices/mails
-  #content:
-    #build: ./microservices/content
+  mails:
+    build: ./microservices/mails
+    depends_on:
+      - smtp
+    environment:
+      - RUST_LOG=mails_microservice=debug
+      - MAILS_ADDRESS=0.0.0.0:8000
+  users:
+    build: ./microservices/users
+    environment:
+      - RUST_LOG=users_microservice=debug
+      - USERS_ADDRESS=0.0.0.0:8000
+      - USERS_DATABASE=postgresql://postgres:password@localhost:5432
+    depends_on:
+      - db
+      - mails
+  content:
+    build: ./microservices/content
+    depends_on:
+      - db
+    environment:
+      - RUST_LOG=content_microservice=debug
+      - ROCKET_HOST=0.0.0.0
+      - ROCKET_PORT=8000
+      - DATABASE_URL=postgresql://postgres:password@localhost:5432
+  router:
+    build: ./microservices/router
+    ports:
+      - 80:8000
+    environment:
+      - RUST_LOG=router_microservice=debug
+      - ROUTER_USERS=http://users:8000
+      - ROUTER_CONTENT=http://content:8000
+    depends_on:
+      - users
+      - content
 
 volumes:
   database_data:

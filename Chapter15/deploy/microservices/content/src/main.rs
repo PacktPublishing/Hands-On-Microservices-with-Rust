@@ -18,13 +18,13 @@ mod comment;
 use rocket::fairing::AdHoc;
 use rocket::request::Form;
 use rocket_contrib::json::Json;
-use diesel::SqliteConnection;
+use diesel::PgConnection;
 use comment::{Comment, NewComment};
 
 embed_migrations!();
 
-#[database("sqlite_database")]
-pub struct Db(SqliteConnection);
+#[database("postgres_database")]
+pub struct Db(PgConnection);
 
 #[post("/new_comment", data = "<comment_form>")]
 fn add_new(comment_form: Form<NewComment>, conn: Db) {
