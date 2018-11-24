@@ -39,12 +39,12 @@ struct UserId {
 }
 
 fn main() -> Result<(), Error> {
+    env_logger::init();
     let mut config = config::Config::default();
     config
         .merge(config::File::with_name("config"))?
-        .merge(config::Environment::with_prefix("APP"))?;
+        .merge(config::Environment::with_prefix("USERS"))?;
     let config: Config = config.try_into()?;
-    env_logger::init();
     let bind_address = config.address.unwrap_or("0.0.0.0:8000".into());
     let db_address = config.database.unwrap_or("postgres://localhost/".into());
     let manager = ConnectionManager::<PgConnection>::new(db_address);
@@ -53,6 +53,7 @@ fn main() -> Result<(), Error> {
         .expect("Failed to create pool.");
     let conn = pool.get()?;
     embedded_migrations::run(&conn)?;
+    debug!("Starting microservice...");
     rouille::start_server(bind_address, move |request| {
         match handler(&request, &pool) {
             Ok(response) => {
