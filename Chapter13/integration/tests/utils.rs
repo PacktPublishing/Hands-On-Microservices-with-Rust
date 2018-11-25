@@ -1,6 +1,7 @@
 use rand::{Rng, thread_rng};
 use rand::distributions::Alphanumeric;
 use reqwest::{self, StatusCode};
+pub use reqwest::Method;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::iter;
@@ -14,14 +15,14 @@ pub fn healthcheck(url: &str, content: &str) {
     assert_eq!(text, content);
 }
 
-pub fn post_request<'a, I, J>(path: &'a str, values: I) -> J
+pub fn request<'a, I, J>(method: Method, path: &'a str, values: I) -> J
 where
     I: IntoIterator<Item = (&'a str, &'a str)>,
     J: for <'de> Deserialize<'de>,
 {
     let params = values.into_iter().collect::<HashMap<_, _>>();
     let client = reqwest::Client::new();
-    let mut resp = client.post(path)
+    let mut resp = client.request(method, path)
         .form(&params)
         .send()
         .unwrap();

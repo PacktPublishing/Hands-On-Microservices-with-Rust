@@ -1,7 +1,8 @@
+mod utils;
+
 use serde_derive::Deserialize;
 use uuid::Uuid;
-
-mod utils;
+use self::utils::Method;
 
 const URL: &str = "http://localhost:8001";
 
@@ -27,11 +28,11 @@ fn check_signup_and_signin() {
         ("email", username.as_ref()),
         ("password", password.as_ref()),
     ];
-    let _: () = utils::post_request(&url("/signup"), params);
+    let _: () = utils::request(Method::POST, &url("/signup"), params);
 
     let params = vec![
         ("email", username.as_ref()),
         ("password", password.as_ref()),
     ];
-    let _: UserId = utils::post_request(&url("/signin"), params);
+    let _: UserId = utils::request(Method::POST, &url("/signin"), params);
 }

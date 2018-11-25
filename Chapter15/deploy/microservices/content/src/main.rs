@@ -27,9 +27,10 @@ fn index() -> &'static str {
 }
 
 #[post("/new_comment", data = "<comment_form>")]
-fn add_new(comment_form: Form<NewComment>, conn: Db) {
+fn add_new(comment_form: Form<NewComment>, conn: Db) -> Json<()> {
     let comment = comment_form.into_inner();
     Comment::insert(comment, &conn);
+    Json(())
 }
 
 #[get("/list")]

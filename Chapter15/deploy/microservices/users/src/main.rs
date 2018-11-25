@@ -81,7 +81,7 @@ fn handler(request: &Request, pool: &Pool) -> Result<Response, Error> {
                 let user_exists: bool = select(exists(users.filter(email.eq(user_email.clone()))))
                     .get_result(&conn)?;
                 if !user_exists {
-                    let uuid = format!("{}", uuid::Uuid::new_v4());
+                    let uuid = uuid::Uuid::new_v4().to_string();
                     let new_user = models::NewUser {
                         id: &uuid,
                         email: &user_email,
