@@ -1,13 +1,6 @@
 mod utils;
 
-use reqwest::{self, StatusCode};
-use self::utils::Method;
-
-const URL: &str = "http://localhost:8002";
-
-fn url(path: &str) -> String {
-    URL.to_owned() + path
-}
+use self::utils::{mailer as url, Method};
 
 #[test]
 fn mails_healthcheck() {

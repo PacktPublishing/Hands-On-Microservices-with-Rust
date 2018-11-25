@@ -1,8 +1,12 @@
-use reqwest::{self, StatusCode};
-
 mod utils;
+
+use self::utils::{router as url, Method};
 
 #[test]
 fn router_healthcheck() {
-    utils::healthcheck("http://localhost:8000/healthcheck", "Router Microservice");
+    utils::healthcheck(&url("/healthcheck"), "Router Microservice");
+}
+
+#[test]
+fn check_router_full() {
 }

@@ -2,13 +2,7 @@ mod utils;
 
 use serde_derive::Deserialize;
 use uuid::Uuid;
-use self::utils::Method;
-
-const URL: &str = "http://localhost:8001";
-
-fn url(path: &str) -> String {
-    URL.to_owned() + path
-}
+use self::utils::{users as url, Method};
 
 #[test]
 fn users_healthcheck() {

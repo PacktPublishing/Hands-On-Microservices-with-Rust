@@ -1,14 +1,7 @@
 mod utils;
 
-use reqwest::{self, StatusCode};
 use serde_derive::Deserialize;
-use self::utils::Method;
-
-const URL: &str = "http://localhost:8003";
-
-fn url(path: &str) -> String {
-    URL.to_owned() + path
-}
+use self::utils::{content as url, Method};
 
 #[test]
 fn content_healthcheck() {

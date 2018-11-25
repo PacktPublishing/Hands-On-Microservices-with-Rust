@@ -53,3 +53,26 @@ pub fn wait(s: u64) {
     thread::sleep(Duration::from_secs(s));
 }
 
+const USERS: &str = "http://localhost:8001";
+
+pub fn users(path: &str) -> String {
+    USERS.to_owned() + path
+}
+
+const MAILER: &str = "http://localhost:8002";
+
+pub fn mailer(path: &str) -> String {
+    MAILER.to_owned() + path
+}
+
+const CONTENT: &str = "http://localhost:8003";
+
+pub fn content(path: &str) -> String {
+    CONTENT.to_owned() + path
+}
+
+const ROUTER: &str = "http://localhost:8000";
+
+pub fn router(path: &str) -> String {
+    ROUTER.to_owned() + path
+}
