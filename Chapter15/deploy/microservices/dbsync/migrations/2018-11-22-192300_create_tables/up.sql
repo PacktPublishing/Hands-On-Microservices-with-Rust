@@ -3,3 +3,9 @@ CREATE TABLE users (
   email TEXT NOT NULL,
   password TEXT NOT NULL
 );
+
+CREATE TABLE comments (
+  id SERIAL PRIMARY KEY,
+  uid TEXT NOT NULL,
+  text TEXT NOT NULL
+);

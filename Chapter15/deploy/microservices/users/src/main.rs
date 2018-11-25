@@ -2,8 +2,6 @@ extern crate config;
 extern crate crypto;
 #[macro_use]
 extern crate diesel;
-#[macro_use]
-extern crate diesel_migrations;
 extern crate env_logger;
 extern crate failure;
 extern crate log;
@@ -27,8 +25,6 @@ type Pool = r2d2::Pool<ConnectionManager<PgConnection>>;
 mod models;
 mod schema;
 
-embed_migrations!();
-
 #[derive(Deserialize)]
 struct Config {
     address: Option<String>,
@@ -47,16 +43,10 @@ fn main() -> Result<(), Error> {
     let config: Config = config.try_into()?;
     let bind_address = config.address.unwrap_or("0.0.0.0:8000".into());
     let db_address = config.database.unwrap_or("postgres://localhost/".into());
-    debug!("Waiting for database...");
-    // Important to wait postgres will be available.
-    while Connection::connect(db_address.as_ref(), TlsMode::None).is_err() { }
-    debug!("Database connected");
     let manager = ConnectionManager::<PgConnection>::new(db_address);
     let pool = Pool::builder()
         .build(manager)
         .expect("Failed to create pool.");
-    let conn = pool.get()?;
-    embedded_migrations::run(&conn)?;
     debug!("Starting microservice...");
     rouille::start_server(bind_address, move |request| {
         match handler(&request, &pool) {

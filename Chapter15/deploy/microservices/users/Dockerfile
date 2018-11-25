@@ -7,7 +7,6 @@ RUN cargo build
 
 RUN rm src/*.rs
 COPY ./src ./src
-COPY ./migrations ./migrations
 COPY ./diesel.toml ./diesel.toml
 RUN rm ./target/debug/deps/users_microservice*
 RUN cargo build

@@ -7,12 +7,6 @@ services:
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=password
-  db2:
-    image: postgres:latest
-    restart: always
-    environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=password
     #volumes:
       #- database_data:/var/lib/postgresql/data
   smtp:
@@ -25,6 +19,14 @@ services:
       - SMTP_USERNAME=admin@example.com
       - SMTP_PASSWORD=password
       - SERVER_HOSTNAME=smtp.example.com
+  dbsync:
+    build: ./microservices/dbsync
+    depends_on:
+      - db
+    environment:
+      - RUST_LOG=dbsync_worker=debug
+      - RUST_BACKTRACE=1
+      - DBSYNC_DATABASE=postgresql://postgres:password@db:5432
   mails:
     build: ./microservices/mails
     depends_on:
@@ -41,12 +43,12 @@ services:
       - USERS_ADDRESS=0.0.0.0:8000
       - USERS_DATABASE=postgresql://postgres:password@db:5432
     depends_on:
-      - db
+      - dbsync
       - mails
   content:
     build: ./microservices/content
     depends_on:
-      - db
+      - dbsync
     ports:
       - 8888:8000
     environment:
@@ -54,9 +56,12 @@ services:
       - RUST_BACKTRACE=1
       - ROCKET_ADDRESS=0.0.0.0
       - ROCKET_PORT=8000
-      - ROCKET_DATABASES={postgres_database={url="postgresql://postgres:password@db2:5432"}}
+      - ROCKET_DATABASES={postgres_database={url="postgresql://postgres:password@db:5432"}}
   router:
     build: ./microservices/router
+    depends_on:
+      - users
+      - content
     ports:
       - 8080:8000
     environment:
@@ -65,9 +70,6 @@ services:
       - ROUTER_ADDRESS=0.0.0.0:8000
       - ROUTER_USERS=http://users:8000
       - ROUTER_CONTENT=http://content:8000
-    depends_on:
-      - users
-      - content
 
 volumes:
   database_data:

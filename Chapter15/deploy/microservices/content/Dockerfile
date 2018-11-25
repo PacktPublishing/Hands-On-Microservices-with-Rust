@@ -7,7 +7,6 @@ RUN cargo build
 
 RUN rm src/*.rs
 COPY ./src ./src
-COPY ./migrations ./migrations
 RUN rm ./target/debug/deps/content_microservice*
 RUN cargo build
 

@@ -1,5 +1,0 @@
-CREATE TABLE comments (
-  id SERIAL PRIMARY KEY,
-  uid TEXT NOT NULL,
-  text TEXT NOT NULL
-);
