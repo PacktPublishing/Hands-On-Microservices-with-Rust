@@ -154,6 +154,10 @@ fn comments(req: HttpRequest<State>) -> FutureResponse<HttpResponse> {
     Box::new(fut)
 }
 
+fn healthcheck(_req: HttpRequest<State>) -> &'static str {
+    "Router Microservice"
+}
+
 #[derive(Debug, Deserialize)]
 struct Config {
     address: Option<String>,
@@ -200,6 +204,7 @@ fn main() -> Result<(), failure::Error> {
                     .name("auth-example")
                     .secure(false),
                     ))
+            .route("/healthcheck", http::Method::GET, healthcheck)
             .scope("/api", |scope| {
                 scope
                     .route("/signup", http::Method::POST, signup)

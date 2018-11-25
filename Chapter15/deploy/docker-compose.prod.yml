@@ -7,13 +7,11 @@ services:
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=password
-    #volumes:
-      #- database_data:/var/lib/postgresql/data
+    volumes:
+      - database_data:/var/lib/postgresql/data
   smtp:
     image: juanluisbaptiste/postfix
     restart: always
-    #ports:
-    #  - 25:25
     environment:
       - SMTP_SERVER=smtp.example.com
       - SMTP_USERNAME=admin@example.com

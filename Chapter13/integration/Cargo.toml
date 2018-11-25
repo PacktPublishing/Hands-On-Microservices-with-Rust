@@ -5,3 +5,4 @@ authors = ["Denis Kolodin <deniskolodin@gmail.com>"]
 edition = "2018"
 
 [dependencies]
+reqwest = "0.9"
