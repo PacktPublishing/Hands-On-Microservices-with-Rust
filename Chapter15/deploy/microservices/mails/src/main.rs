@@ -4,10 +4,12 @@ extern crate failure;
 #[macro_use]
 extern crate nickel;
 extern crate lettre;
+extern crate log;
 extern crate serde_derive;
 
 use failure::{format_err, Error};
-use lettre::{SendableEmail, EmailAddress, Envelope, SmtpClient, SmtpTransport, Transport};
+use lettre::{ClientSecurity, SendableEmail, EmailAddress, Envelope, SmtpClient, SmtpTransport, Transport};
+use log::{debug, error};
 use nickel::{Action, Nickel, HttpRouter, FormBody, Request, Response, MiddlewareResult};
 use nickel::status::StatusCode;
 use nickel::template_cache::{ReloadPolicy, TemplateCache};
@@ -19,14 +21,19 @@ use std::sync::mpsc::{channel, Sender};
 
 fn spawn_sender() -> Sender<SendableEmail> {
     let (tx, rx) = channel();
-    let client = SmtpClient::new_unencrypted_localhost()
-        .expect("can't start smtp client");
+    debug!("Waiting for SMTP server");
+    let client = (|| loop {
+        if let Ok(smtp) = SmtpClient::new("127.0.0.1:2525", ClientSecurity::None) {
+            return smtp;
+        }
+    })();
+    debug!("SMTP connected");
     thread::spawn(move || {
         let mut mailer = SmtpTransport::new(client);
         for email in rx.iter() {
             let result = mailer.send(email);
             if let Err(err) = result {
-                println!("Can't send mail: {}", err);
+                error!("Can't send mail: {}", err);
             }
         }
         mailer.close();
@@ -86,6 +93,7 @@ fn main() -> Result<(), Error> {
     let mut server = Nickel::with_data(data);
     server.get("/", middleware!("Mailer Microservice"));
     server.post("/send", send);
-    server.listen(bind_address).map_err(|_| format_err!(""))?;
+    server.listen(bind_address)
+        .map_err(|err| format_err!("can't bind server: {}", err))?;
     Ok(())
 }

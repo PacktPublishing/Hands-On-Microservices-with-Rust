@@ -17,6 +17,8 @@ services:
       - SMTP_USERNAME=admin@example.com
       - SMTP_PASSWORD=password
       - SERVER_HOSTNAME=smtp.example.com
+    ports:
+      - 2525:2525
   dbsync:
     build: ./microservices/dbsync
     depends_on:
