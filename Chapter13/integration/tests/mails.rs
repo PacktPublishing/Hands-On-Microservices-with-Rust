@@ -22,5 +22,6 @@ fn send_mail() {
         ("to", email.as_ref()),
         ("code", code.as_ref()),
     ];
-    let _: () = utils::request(Method::POST, &url("/send"), params);
+    let sent: bool = utils::request(Method::POST, &url("/send"), params);
+    assert!(sent);
 }

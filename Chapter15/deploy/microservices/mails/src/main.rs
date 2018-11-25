@@ -11,7 +11,7 @@ use failure::{format_err, Error};
 use lettre::{ClientSecurity, SendableEmail, EmailAddress, Envelope, SmtpClient, SmtpTransport, Transport};
 use lettre::smtp::authentication::Credentials;
 use log::{debug, error};
-use nickel::{Action, Nickel, HttpRouter, FormBody, Request, Response, MiddlewareResult};
+use nickel::{Nickel, HttpRouter, FormBody, Request, Response, MiddlewareResult};
 use nickel::status::StatusCode;
 use nickel::template_cache::{ReloadPolicy, TemplateCache};
 use serde_derive::Deserialize;
@@ -60,14 +60,13 @@ fn send_impl(req: &mut Request<Data>) -> Result<(), Error> {
     data.cache.render("templates/confirm.tpl", &mut body, &params)?;
     let email = SendableEmail::new(envelope, "Confirm email".to_string(), Vec::new());
     let sender = data.sender.lock().unwrap().clone();
-    sender.send(email).map_err(|_| format_err!("can't send email"))?;
+    sender.send(email).map_err(|err| format_err!("can't send email: {}", err))?;
     Ok(())
 }
 
-fn send<'mw>(req: &mut Request<Data>, mut res: Response<'mw, Data>) -> MiddlewareResult<'mw, Data> {
+fn send<'mw>(req: &mut Request<Data>, res: Response<'mw, Data>) -> MiddlewareResult<'mw, Data> {
     try_with!(res, send_impl(req).map_err(|_| StatusCode::BadRequest));
-    res.set(StatusCode::Ok);
-    Ok(Action::Continue(res))
+    res.send("true")
 }
 
 struct Data {
