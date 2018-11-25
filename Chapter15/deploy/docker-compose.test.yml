@@ -18,7 +18,7 @@ services:
       - SMTP_PASSWORD=password
       - SERVER_HOSTNAME=smtp.example.com
     ports:
-      - 2525:2525
+      - "2525:25"
   dbsync:
     build: ./microservices/dbsync
     depends_on:
@@ -35,6 +35,9 @@ services:
       - RUST_LOG=mails_microservice=debug
       - RUST_BACKTRACE=1
       - MAILS_ADDRESS=0.0.0.0:8000
+      - MAILS_SMTP_ADDRESS=smtp:2525
+      - MAILS_SMTP_LOGIN=admin@example.com
+      - MAILS_SMTP_PASSWORD=password
     ports:
       - 8002:8000
   users:

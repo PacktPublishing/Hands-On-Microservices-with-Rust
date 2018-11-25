@@ -9,6 +9,7 @@ extern crate serde_derive;
 
 use failure::{format_err, Error};
 use lettre::{ClientSecurity, SendableEmail, EmailAddress, Envelope, SmtpClient, SmtpTransport, Transport};
+use lettre::smtp::authentication::Credentials;
 use log::{debug, error};
 use nickel::{Action, Nickel, HttpRouter, FormBody, Request, Response, MiddlewareResult};
 use nickel::status::StatusCode;
@@ -19,12 +20,14 @@ use std::thread;
 use std::sync::Mutex;
 use std::sync::mpsc::{channel, Sender};
 
-fn spawn_sender() -> Sender<SendableEmail> {
+fn spawn_sender(address: String, login: String, password: String) -> Sender<SendableEmail> {
     let (tx, rx) = channel();
     debug!("Waiting for SMTP server");
     let client = (|| loop {
-        if let Ok(smtp) = SmtpClient::new("127.0.0.1:2525", ClientSecurity::None) {
-            return smtp;
+        if let Ok(smtp) = SmtpClient::new(&address, ClientSecurity::None) {
+            let credentials = Credentials::new(login, password);
+            let client = smtp.credentials(credentials);
+            return client;
         }
     })();
     debug!("SMTP connected");
@@ -43,7 +46,7 @@ fn spawn_sender() -> Sender<SendableEmail> {
 
 fn send_impl(req: &mut Request<Data>) -> Result<(), Error> {
     let (to, code) = {
-        let params = req.form_body().map_err(|_| format_err!(""))?;
+        let params = req.form_body().map_err(|(_, err)| format_err!("can't read form: {}", err))?;
         let to = params.get("to").ok_or(format_err!("to field not set"))?.to_owned();
         let code = params.get("code").ok_or(format_err!("code field not set"))?.to_owned();
         (to, code)
@@ -75,6 +78,9 @@ struct Data {
 #[derive(Deserialize)]
 struct Config {
     address: Option<String>,
+    smtp_address: Option<String>,
+    smtp_login: String,
+    smtp_password: String,
 }
 
 fn main() -> Result<(), Error> {
@@ -83,8 +89,10 @@ fn main() -> Result<(), Error> {
     config.merge(config::Environment::with_prefix("MAILS"))?;
     let config: Config = config.try_into()?;
     let bind_address = config.address.unwrap_or("0.0.0.0:8000".into());
-    let tx = spawn_sender();
-
+    let smtp_address = config.smtp_address.unwrap_or("127.0.0.1:2525".into());
+    let smtp_login = config.smtp_login;
+    let smtp_password = config.smtp_password;
+    let tx = spawn_sender(smtp_address, smtp_login, smtp_password);
     let data = Data {
         sender: Mutex::new(tx),
         cache: TemplateCache::with_policy(ReloadPolicy::Always),
