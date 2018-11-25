@@ -4,8 +4,9 @@ extern crate nickel;
 extern crate lettre;
 
 use failure::{format_err, Error};
-use lettre::{SendableEmail, EmailAddress, Envelope, SmtpClient, SmtpTransport, Transport};
-use nickel::{Action, Nickel, HttpRouter, FormBody, Request, Response, MiddlewareResult};
+use lettre::{ClientSecurity, SendableEmail, EmailAddress, Envelope, SmtpClient, SmtpTransport, Transport};
+use lettre::smtp::authentication::IntoCredentials;
+use nickel::{Nickel, HttpRouter, FormBody, Request, Response, MiddlewareResult};
 use nickel::status::StatusCode;
 use nickel::template_cache::{ReloadPolicy, TemplateCache};
 use std::collections::HashMap;
@@ -15,8 +16,10 @@ use std::sync::mpsc::{channel, Sender};
 
 fn spawn_sender() -> Sender<SendableEmail> {
     let (tx, rx) = channel();
-    let client = SmtpClient::new_unencrypted_localhost()
+    let smtp = SmtpClient::new("localhost:2525", ClientSecurity::None)
         .expect("can't start smtp client");
+    let credentials = ("admin@example.com", "password").into_credentials();
+    let client = smtp.credentials(credentials);
     thread::spawn(move || {
         let mut mailer = SmtpTransport::new(client);
         for email in rx.iter() {
@@ -50,10 +53,9 @@ fn send_impl(req: &mut Request<Data>) -> Result<(), Error> {
     Ok(())
 }
 
-fn send<'mw>(req: &mut Request<Data>, mut res: Response<'mw, Data>) -> MiddlewareResult<'mw, Data> {
+fn send<'mw>(req: &mut Request<Data>, res: Response<'mw, Data>) -> MiddlewareResult<'mw, Data> {
     try_with!(res, send_impl(req).map_err(|_| StatusCode::BadRequest));
-    res.set(StatusCode::Ok);
-    Ok(Action::Continue(res))
+    res.send("true")
 }
 
 struct Data {
