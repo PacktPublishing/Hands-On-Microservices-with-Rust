@@ -105,7 +105,7 @@ fn handler(request: &Request, pool: &Pool) -> Result<Response, Error> {
                 password: String,
             })?;
             debug!("Signin for {}", data.email);
-            let user_email = data.email;
+            let user_email = data.email.trim().to_lowercase();
             let user_password = data.password;
             {
                 use self::schema::users::dsl::*;
@@ -118,7 +118,6 @@ fn handler(request: &Request, pool: &Pool) -> Result<Response, Error> {
                     let user_id = UserId {
                         id: user.id,
                     };
-                    // grpc?
                     Response::json(&user_id)
                         .with_status_code(200)
                 } else {
