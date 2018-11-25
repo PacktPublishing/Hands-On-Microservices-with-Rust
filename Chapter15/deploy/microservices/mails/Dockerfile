@@ -7,6 +7,7 @@ RUN cargo build
 
 RUN rm src/*.rs
 COPY ./src ./src
+COPY ./templates ./templates
 RUN rm ./target/debug/deps/mails_microservice*
 RUN cargo build
 
