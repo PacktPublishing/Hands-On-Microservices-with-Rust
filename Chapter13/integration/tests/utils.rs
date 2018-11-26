@@ -1,44 +1,101 @@
+#![allow(dead_code)]
+
+use cookie::{Cookie, CookieJar};
 use rand::{Rng, thread_rng};
 use rand::distributions::Alphanumeric;
-use reqwest::{self, StatusCode};
-pub use reqwest::Method;
+pub use reqwest::{self, Client, Method, RedirectPolicy, StatusCode};
+use reqwest::header::{COOKIE, SET_COOKIE};
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::iter;
 use std::time::Duration;
 use std::thread;
 
-pub fn healthcheck(url: &str, content: &str) {
-    let mut resp = reqwest::get(url).unwrap();
-    assert_eq!(resp.status(), StatusCode::OK);
-    let text = resp.text().unwrap();
-    assert_eq!(text, content);
+pub struct WebApi {
+    client: Client,
+    url: String,
+    jar: CookieJar,
 }
 
-pub fn request<'a, I, J>(method: Method, path: &'a str, values: I) -> J
-where
-    I: IntoIterator<Item = (&'a str, &'a str)>,
-    J: for <'de> Deserialize<'de>,
-{
-    let params = values.into_iter().collect::<HashMap<_, _>>();
-    let client = reqwest::Client::new();
-    let mut resp = client.request(method, path)
-        .form(&params)
-        .send()
-        .unwrap();
-
-    let status = resp.status().to_owned();
-
-    let text = resp
-        .text()
-        .unwrap();
-
-    if status != StatusCode::OK {
-        eprintln!("Bad Response: {}", text);
-        assert_eq!(StatusCode::OK, resp.status());
+impl WebApi {
+    fn new(url: &str) -> Self {
+        let client = Client::builder()
+            .redirect(RedirectPolicy::none())
+            .build()
+            .unwrap();
+        Self {
+            client,
+            url: url.into(),
+            jar: CookieJar::new(),
+        }
     }
 
-    serde_json::from_str(&text).unwrap()
+    pub fn users() -> Self { WebApi::new(USERS) }
+    pub fn mailer() -> Self { WebApi::new(MAILER) }
+    pub fn content() -> Self { WebApi::new(CONTENT) }
+    pub fn router() -> Self { WebApi::new(ROUTER) }
+
+    pub fn healthcheck(&mut self, path: &str, content: &str) {
+        let url = url(&self.url, path);
+        let mut resp = reqwest::get(&url).unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+        let text = resp.text().unwrap();
+        assert_eq!(text, content);
+    }
+
+    pub fn check_status<'a, I>(&mut self, method: Method, path: &'a str, values: I, status: StatusCode)
+    where
+        I: IntoIterator<Item = (&'a str, &'a str)>,
+    {
+        let url = url(&self.url, path);
+        let params = values.into_iter().collect::<HashMap<_, _>>();
+        let cookies = self.jar.iter()
+            .map(|kv| format!("{}={}", kv.name(), kv.value()))
+            .collect::<Vec<_>>()
+            .join(";");
+        let resp = self.client.request(method, &url)
+            .header(COOKIE, cookies)
+            .form(&params)
+            .send()
+            .unwrap();
+        if let Some(value) = resp.headers().get(SET_COOKIE) {
+            let raw_cookie = value.to_str().unwrap().to_owned();
+            let cookie = Cookie::parse(raw_cookie).unwrap();
+            self.jar.add(cookie);
+        }
+        assert_eq!(status, resp.status());
+    }
+
+    pub fn request<'a, I, J>(&mut self, method: Method, path: &'a str, values: I) -> J
+    where
+        I: IntoIterator<Item = (&'a str, &'a str)>,
+        J: for <'de> Deserialize<'de>,
+    {
+        let url = url(&self.url, path);
+        let params = values.into_iter().collect::<HashMap<_, _>>();
+        let mut resp = self.client.request(method, &url)
+            .form(&params)
+            .send()
+            .unwrap();
+
+        let status = resp.status().to_owned();
+
+        let text = resp
+            .text()
+            .unwrap();
+
+        if status != StatusCode::OK {
+            panic!("Bad response [{}] of '{}': {}", resp.status(), path, text);
+        }
+
+        let value = serde_json::from_str(&text);
+        match value {
+            Ok(value) => value,
+            Err(err) => {
+                panic!("Can't convert '{}': {}", text, err);
+            },
+        }
+    }
 }
 
 pub fn rand_str() -> String {
@@ -55,24 +112,12 @@ pub fn wait(s: u64) {
 
 const USERS: &str = "http://localhost:8001";
 
-pub fn users(path: &str) -> String {
-    USERS.to_owned() + path
-}
-
 const MAILER: &str = "http://localhost:8002";
-
-pub fn mailer(path: &str) -> String {
-    MAILER.to_owned() + path
-}
 
 const CONTENT: &str = "http://localhost:8003";
 
-pub fn content(path: &str) -> String {
-    CONTENT.to_owned() + path
-}
-
 const ROUTER: &str = "http://localhost:8000";
 
-pub fn router(path: &str) -> String {
-    ROUTER.to_owned() + path
+pub fn url(url: &str, path: &str) -> String {
+    url.to_owned() + path
 }

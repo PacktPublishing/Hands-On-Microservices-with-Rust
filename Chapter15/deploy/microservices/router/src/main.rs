@@ -70,36 +70,37 @@ where
 }
 
 
-#[derive(Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct UserForm {
     email: String,
     password: String,
 }
 
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct UserId {
     id: String,
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct Comment {
     pub id: Option<i32>,
     pub uid: String,
     pub text: String,
 }
 
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct AddComment {
     pub text: String,
 }
 
-#[derive(Serialize)]
+#[derive(Debug, Serialize)]
 pub struct NewComment {
     pub uid: String,
     pub text: String,
 }
 
 fn signup((req, params): (HttpRequest<State>, Form<UserForm>)) -> FutureResponse<HttpResponse> {
+    debug!("/api/signup called ({:?})", params);
     let url = format!("{}/signup", req.state().users());
     let fut = request(&url, params.into_inner())
         .map(|_: ()| {
@@ -111,6 +112,7 @@ fn signup((req, params): (HttpRequest<State>, Form<UserForm>)) -> FutureResponse
 }
 
 fn signin((req, params): (HttpRequest<State>, Form<UserForm>)) -> FutureResponse<HttpResponse> {
+    debug!("/api/signin called ({:?})", params);
     let url = format!("{}/signin", req.state().users());
     let fut = request(&url, params.into_inner())
         .map(move |id: UserId| {
@@ -124,6 +126,7 @@ fn signin((req, params): (HttpRequest<State>, Form<UserForm>)) -> FutureResponse
 }
 
 fn new_comment((req, params): (HttpRequest<State>, Form<AddComment>)) -> FutureResponse<HttpResponse> {
+    debug!("/api/new_comment called ({:?})", params);
     let url = format!("{}/new_comment", req.state().content());
     let fut = req.identity()
         .ok_or(format_err!("not authorized").into())
@@ -146,6 +149,7 @@ fn new_comment((req, params): (HttpRequest<State>, Form<AddComment>)) -> FutureR
 }
 
 fn comments(req: HttpRequest<State>) -> FutureResponse<HttpResponse> {
+    debug!("/api/comments called");
     let url = format!("{}/list", req.state().content());
     let fut = get_req(&url)
         .map(|data| {
