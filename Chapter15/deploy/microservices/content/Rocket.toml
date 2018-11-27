@@ -1,0 +1,7 @@
+[global]
+template_dir = "static"
+address = "127.0.0.1"
+port = 8003
+
+[global.databases.postgres_database]
+url = "postgres://localhost/"

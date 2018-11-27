@@ -1,0 +1,74 @@
+version: "3.6"
+
+services:
+  db:
+    image: postgres:latest
+    restart: always
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+    volumes:
+      - database_data:/var/lib/postgresql/data
+  smtp:
+    image: juanluisbaptiste/postfix
+    restart: always
+    environment:
+      - SMTP_SERVER=smtp.example.com
+      - SMTP_USERNAME=admin@example.com
+      - SMTP_PASSWORD=password
+      - SERVER_HOSTNAME=smtp.example.com
+  dbsync:
+    build: ./microservices/dbsync
+    depends_on:
+      - db
+    environment:
+      - RUST_LOG=dbsync_worker=debug
+      - RUST_BACKTRACE=1
+      - DBSYNC_DATABASE=postgresql://postgres:password@db:5432
+  mails:
+    build: ./microservices/mails
+    depends_on:
+      - smtp
+    environment:
+      - RUST_LOG=mails_microservice=debug
+      - RUST_BACKTRACE=1
+      - MAILS_ADDRESS=0.0.0.0:8000
+  users:
+    build: ./microservices/users
+    environment:
+      - RUST_LOG=users_microservice=debug
+      - RUST_BACKTRACE=1
+      - USERS_ADDRESS=0.0.0.0:8000
+      - USERS_DATABASE=postgresql://postgres:password@db:5432
+    depends_on:
+      - dbsync
+      - mails
+  content:
+    build: ./microservices/content
+    depends_on:
+      - dbsync
+    ports:
+      - 8888:8000
+    environment:
+      - RUST_LOG=content_microservice=debug
+      - RUST_BACKTRACE=1
+      - ROCKET_ADDRESS=0.0.0.0
+      - ROCKET_PORT=8000
+      - ROCKET_DATABASES={postgres_database={url="postgresql://postgres:password@db:5432"}}
+  router:
+    build: ./microservices/router
+    depends_on:
+      - users
+      - content
+    ports:
+      - 8080:8000
+    environment:
+      - RUST_LOG=router_microservice=debug
+      - RUST_BACKTRACE=1
+      - ROUTER_ADDRESS=0.0.0.0:8000
+      - ROUTER_USERS=http://users:8000
+      - ROUTER_CONTENT=http://content:8000
+
+volumes:
+  database_data:
+    driver: local

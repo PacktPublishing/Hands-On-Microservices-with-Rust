@@ -1,0 +1,14 @@
+[package]
+name = "thread_pool"
+version = "0.1.0"
+authors = ["Denis Kolodin <deniskolodin@gmail.com>"]
+
+[dependencies]
+futures = "0.1"
+hyper = "0.12"
+serde = "1.0"
+serde_derive = "1.0"
+serde_json = "1.0"
+queryst = "2.0"
+image = "0.20"
+futures-cpupool = "0.1"

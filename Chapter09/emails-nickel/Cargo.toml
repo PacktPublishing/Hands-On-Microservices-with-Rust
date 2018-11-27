@@ -1,0 +1,10 @@
+[package]
+name = "emails-nickel"
+version = "0.1.0"
+authors = ["Denis Kolodin <deniskolodin@gmail.com>"]
+
+[dependencies]
+failure = "0.1"
+lettre = { git = "https://github.com/lettre/lettre" }
+lettre_email = { git = "https://github.com/lettre/lettre" }
+nickel = "0.10"

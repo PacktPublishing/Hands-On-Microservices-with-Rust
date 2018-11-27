@@ -1,0 +1,8 @@
+[package]
+name = "example-11-1-minimal"
+version = "0.1.0"
+authors = ["Denis Kolodin <deniskolodin@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+actix-web = "0.7"

@@ -1,0 +1,7 @@
+[package]
+name = "hello-lambda"
+version = "0.1.0"
+authors = ["Denis Kolodin <deniskolodin@gmail.com>"]
+
+[dependencies]
+aws_lambda = { git = "https://github.com/srijs/rust-aws-lambda" }

@@ -1,0 +1,8 @@
+[package]
+name = "wait-pg"
+version = "0.1.0"
+authors = ["Denis Kolodin <deniskolodin@gmail.com>"]
+
+[dependencies]
+failure = "0.1"
+postgres = "0.15"
