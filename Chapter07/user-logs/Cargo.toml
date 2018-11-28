@@ -1,0 +1,16 @@
+[package]
+name = "user-logs"
+version = "0.1.0"
+authors = ["Denis Kolodin <deniskolodin@gmail.com>"]
+
+[dependencies]
+bson = "0.13"
+chrono = { version = "0.4", features = ["serde"] }
+clap = "2.32"
+failure = "0.1"
+mongodb = "0.3"
+r2d2 = "0.8"
+r2d2-mongodb = "0.1"
+serde = "1.0"
+serde_derive = "1.0"
+url = "1.7"
