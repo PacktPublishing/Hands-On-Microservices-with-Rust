@@ -30,11 +30,6 @@ fn create_user(conn: &SqliteConnection, name: &str, email: &str) -> Result<(), E
     Ok(())
 }
 
-struct User {
-    name: String,
-    email: String,
-}
-
 const CMD_ADD: &str = "add";
 const CMD_LIST: &str = "list";
 
