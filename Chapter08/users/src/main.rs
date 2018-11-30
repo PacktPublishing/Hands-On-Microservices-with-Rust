@@ -14,22 +14,6 @@ use failure::Error;
 mod models;
 mod schema;
 
-fn create_user(conn: &SqliteConnection, name: &str, email: &str) -> Result<(), Error> {
-    let uuid = format!("{}", uuid::Uuid::new_v4());
-
-    let new_user = models::NewUser {
-        id: &uuid,
-        name: &name,
-        email: &email,
-    };
-
-    diesel::insert_into(schema::users::table)
-        .values(&new_user)
-        .execute(conn)?;
-
-    Ok(())
-}
-
 const CMD_ADD: &str = "add";
 const CMD_LIST: &str = "list";
 
@@ -72,7 +56,15 @@ fn main() -> Result<(), Error> {
             let conn = pool.get()?;
             let name = matches.value_of("NAME").unwrap();
             let email = matches.value_of("EMAIL").unwrap();
-            create_user(&conn, name, email)?;
+            let uuid = format!("{}", uuid::Uuid::new_v4());
+            let new_user = models::NewUser {
+                id: &uuid,
+                name: &name,
+                email: &email,
+            };
+            diesel::insert_into(schema::users::table)
+                .values(&new_user)
+                .execute(&conn)?;
         }
         (CMD_LIST, _) => {
             use self::schema::users::dsl::*;
