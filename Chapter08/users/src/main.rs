@@ -11,8 +11,8 @@ use diesel::prelude::*;
 use diesel::r2d2::ConnectionManager;
 use failure::Error;
 
-mod models;
-mod schema;
+pub mod models;
+pub mod schema;
 
 const CMD_ADD: &str = "add";
 const CMD_LIST: &str = "list";
