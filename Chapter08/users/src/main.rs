@@ -47,9 +47,7 @@ fn main() -> Result<(), Error> {
     let path = matches.value_of("database")
         .unwrap_or("test.db");
     let manager = ConnectionManager::<SqliteConnection>::new(path);
-    let pool = r2d2::Pool::builder()
-        .build(manager)
-        .expect("Failed to create pool.");
+    let pool = r2d2::Pool::new(manager)?;
 
     match matches.subcommand() {
         (CMD_ADD, Some(matches)) => {
