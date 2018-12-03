@@ -1,10 +1,15 @@
 extern crate clap;
+extern crate failure;
+extern crate r2d2;
+extern crate r2d2_redis;
 extern crate redis;
 
 use clap::{
     crate_authors, crate_description, crate_name, crate_version, App, AppSettings, Arg, SubCommand,
 };
-use redis::{Client, Commands, Connection, RedisError};
+use redis::{Connection, RedisError};
+use r2d2_redis::RedisConnectionManager;
+use r2d2_redis::redis::Commands;
 use std::collections::HashMap;
 
 const SESSIONS: &str = "sessions";
@@ -24,7 +29,7 @@ fn list_sessions(conn: &Connection) -> Result<HashMap<String, String>, RedisErro
     conn.hgetall(SESSIONS)
 }
 
-fn main() -> Result<(), RedisError> {
+fn main() -> Result<(), failure::Error> {
 
     let matches = App::new(crate_name!())
         .version(crate_version!())
@@ -53,13 +58,14 @@ fn main() -> Result<(), RedisError> {
                          .help("Sets the token of a user")
                          .required(true)
                          .index(1)))
-        .subcommand(SubCommand::with_name(CMD_LIST).about("print list of sesssions"))
+        .subcommand(SubCommand::with_name(CMD_LIST).about("print list of sessions"))
         .get_matches();
 
     let addr = matches.value_of("database")
         .unwrap_or("redis://127.0.0.1/");
-    let client = Client::open(addr)?;
-    let conn = client.get_connection()?;
+    let manager = RedisConnectionManager::new(addr)?;
+    let pool = r2d2::Pool::new(manager)?;
+    let conn = pool.get()?;
 
     match matches.subcommand() {
         (CMD_ADD, Some(matches)) => {

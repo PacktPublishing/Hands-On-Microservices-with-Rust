@@ -11,29 +11,8 @@ use diesel::prelude::*;
 use diesel::r2d2::ConnectionManager;
 use failure::Error;
 
-mod models;
-mod schema;
-
-fn create_user(conn: &SqliteConnection, name: &str, email: &str) -> Result<(), Error> {
-    let uuid = format!("{}", uuid::Uuid::new_v4());
-
-    let new_user = models::NewUser {
-        id: &uuid,
-        name: &name,
-        email: &email,
-    };
-
-    diesel::insert_into(schema::users::table)
-        .values(&new_user)
-        .execute(conn)?;
-
-    Ok(())
-}
-
-struct User {
-    name: String,
-    email: String,
-}
+pub mod models;
+pub mod schema;
 
 const CMD_ADD: &str = "add";
 const CMD_LIST: &str = "list";
@@ -68,16 +47,22 @@ fn main() -> Result<(), Error> {
     let path = matches.value_of("database")
         .unwrap_or("test.db");
     let manager = ConnectionManager::<SqliteConnection>::new(path);
-    let pool = r2d2::Pool::builder()
-        .build(manager)
-        .expect("Failed to create pool.");
+    let pool = r2d2::Pool::new(manager)?;
 
     match matches.subcommand() {
         (CMD_ADD, Some(matches)) => {
             let conn = pool.get()?;
             let name = matches.value_of("NAME").unwrap();
             let email = matches.value_of("EMAIL").unwrap();
-            create_user(&conn, name, email)?;
+            let uuid = format!("{}", uuid::Uuid::new_v4());
+            let new_user = models::NewUser {
+                id: &uuid,
+                name: &name,
+                email: &email,
+            };
+            diesel::insert_into(schema::users::table)
+                .values(&new_user)
+                .execute(&conn)?;
         }
         (CMD_LIST, _) => {
             use self::schema::users::dsl::*;
