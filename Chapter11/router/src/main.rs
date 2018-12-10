@@ -10,9 +10,10 @@ extern crate serde_urlencoded;
 
 use actix_web::{
     client, middleware, server, fs, App, Error, Form, HttpMessage,
-    HttpRequest, HttpResponse, FutureResponse,
+    HttpRequest, HttpResponse, FutureResponse, Result,
 };
 use actix_web::http::{self, header, StatusCode};
+use actix_web::middleware::{Finished, Middleware, Response, Started};
 use actix_web::middleware::identity::RequestIdentity;
 use actix_web::middleware::identity::{CookieIdentityPolicy, IdentityService};
 use failure::format_err;
@@ -20,6 +21,7 @@ use futures::{IntoFuture, Future};
 use log::{error};
 use serde::{Deserialize, Serialize};
 use serde_derive::{Deserialize, Serialize};
+use std::cell::RefCell;
 
 fn boxed<I, E, F>(fut: F) -> Box<Future<Item = I, Error = E>>
 where
@@ -107,7 +109,7 @@ fn signup(params: Form<UserForm>) -> FutureResponse<HttpResponse> {
     Box::new(fut)
 }
 
-fn signin((req, params): (HttpRequest, Form<UserForm>)) -> FutureResponse<HttpResponse> {
+fn signin((req, params): (HttpRequest<State>, Form<UserForm>)) -> FutureResponse<HttpResponse> {
     let fut = request("http://127.0.0.1:8001/signin", params.into_inner())
         .map(move |id: UserId| {
             req.remember(id.id);
@@ -119,7 +121,7 @@ fn signin((req, params): (HttpRequest, Form<UserForm>)) -> FutureResponse<HttpRe
     Box::new(fut)
 }
 
-fn new_comment((req, params): (HttpRequest, Form<AddComment>)) -> FutureResponse<HttpResponse> {
+fn new_comment((req, params): (HttpRequest<State>, Form<AddComment>)) -> FutureResponse<HttpResponse> {
     let fut = req.identity()
         .ok_or(format_err!("not authorized").into())
         .into_future()
@@ -140,7 +142,7 @@ fn new_comment((req, params): (HttpRequest, Form<AddComment>)) -> FutureResponse
     Box::new(fut)
 }
 
-fn comments(_req: HttpRequest) -> FutureResponse<HttpResponse> {
+fn comments(_req: HttpRequest<State>) -> FutureResponse<HttpResponse> {
     let fut = get_req("http://127.0.0.1:8003/list")
         .map(|data| {
             HttpResponse::Ok().body(data)
@@ -148,12 +150,34 @@ fn comments(_req: HttpRequest) -> FutureResponse<HttpResponse> {
     Box::new(fut)
 }
 
+#[derive(Default)]
+struct State(RefCell<i64>);
+
+pub struct Counter;
+
+impl Middleware<State> for Counter {
+    fn start(&self, req: &HttpRequest<State>) -> Result<Started> {
+        println!("Hi from start. You requested: {}", req.path());
+        Ok(Started::Done)
+    }
+
+    fn response(&self, _req: &HttpRequest<State>, resp: HttpResponse) -> Result<Response> {
+        println!("Hi from response");
+        Ok(Response::Done(resp))
+    }
+
+    fn finish(&self, _req: &HttpRequest<State>, _resp: &HttpResponse) -> Finished {
+        println!("Hi from finish");
+        Finished::Done
+    }
+}
+
 fn main() {
     env_logger::init();
     let sys = actix::System::new("router");
 
     server::new(|| {
-        App::new()
+        App::with_state(State::default())
             .middleware(middleware::Logger::default())
             .middleware(IdentityService::new(
                     CookieIdentityPolicy::new(&[0; 32])

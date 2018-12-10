@@ -68,6 +68,8 @@ fn main() -> Result<(), Error> {
             use self::schema::users::dsl::*;
             let conn = pool.get()?;
             let mut items = users
+                .filter(email.like("%@example.com"))
+                .limit(10)
                 .load::<models::User>(&conn)?;
             for user in items {
                 println!("{:?}", user);

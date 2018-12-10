@@ -33,7 +33,7 @@ fn add_new(comment_form: Form<NewComment>, conn: Db) {
 }
 
 #[get("/list")]
-fn index(conn: Db) -> Json<Vec<Comment>> {
+fn list(conn: Db) -> Json<Vec<Comment>> {
     Json(Comment::all(&conn))
 }
 
@@ -50,6 +50,6 @@ fn main() {
                 },
             }
         }))
-        .mount("/", routes![index, add_new])
+        .mount("/", routes![list, add_new])
         .launch();
 }
