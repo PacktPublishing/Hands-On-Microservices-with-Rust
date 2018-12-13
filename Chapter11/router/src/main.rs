@@ -196,10 +196,7 @@ fn main() {
                     .route("/new_comment", http::Method::POST, new_comment)
                     .route("/comments", http::Method::GET, comments)
             })
-            .scope("/stat", |scope| {
-                scope
-                    .route("/counter", http::Method::GET, counter)
-            })
+            .route("/stats/counter", http::Method::GET, counter)
             .handler(
                 "/",
                 fs::StaticFiles::new("./static/").unwrap().index_file("index.html")
