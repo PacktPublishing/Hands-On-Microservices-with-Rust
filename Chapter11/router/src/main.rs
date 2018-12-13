@@ -30,7 +30,7 @@ where
     Box::new(fut)
 }
 
-fn get_req(url: &str) -> impl Future<Item = Vec<u8>, Error = Error> {
+fn get_request(url: &str) -> impl Future<Item = Vec<u8>, Error = Error> {
     client::ClientRequest::get(url)
         .finish().into_future()
         .and_then(|req| {
@@ -41,7 +41,7 @@ fn get_req(url: &str) -> impl Future<Item = Vec<u8>, Error = Error> {
         })
 }
 
-fn request<T, O>(url: &str, params: T) -> impl Future<Item = O, Error = Error>
+fn post_request<T, O>(url: &str, params: T) -> impl Future<Item = O, Error = Error>
 where
     T: Serialize,
     O: for <'de> Deserialize<'de> + 'static,
@@ -100,7 +100,7 @@ pub struct NewComment {
 }
 
 fn signup(params: Form<UserForm>) -> FutureResponse<HttpResponse> {
-    let fut = request("http://127.0.0.1:8001/signup", params.into_inner())
+    let fut = post_request("http://127.0.0.1:8001/signup", params.into_inner())
         .map(|_: ()| {
             HttpResponse::Found()
             .header(header::LOCATION, "/login.html")
@@ -110,7 +110,7 @@ fn signup(params: Form<UserForm>) -> FutureResponse<HttpResponse> {
 }
 
 fn signin((req, params): (HttpRequest<State>, Form<UserForm>)) -> FutureResponse<HttpResponse> {
-    let fut = request("http://127.0.0.1:8001/signin", params.into_inner())
+    let fut = post_request("http://127.0.0.1:8001/signin", params.into_inner())
         .map(move |id: UserId| {
             req.remember(id.id);
             HttpResponse::build_from(&req)
@@ -130,7 +130,7 @@ fn new_comment((req, params): (HttpRequest<State>, Form<AddComment>)) -> FutureR
                 uid,
                 text: params.into_inner().text,
             };
-            request::<_, ()>("http://127.0.0.1:8003/new_comment", params)
+            post_request::<_, ()>("http://127.0.0.1:8003/new_comment", params)
         })
         .then(move |_| {
             let res = HttpResponse::build_from(&req)
@@ -143,7 +143,7 @@ fn new_comment((req, params): (HttpRequest<State>, Form<AddComment>)) -> FutureR
 }
 
 fn comments(_req: HttpRequest<State>) -> FutureResponse<HttpResponse> {
-    let fut = get_req("http://127.0.0.1:8003/list")
+    let fut = get_request("http://127.0.0.1:8003/list")
         .map(|data| {
             HttpResponse::Ok().body(data)
         });
