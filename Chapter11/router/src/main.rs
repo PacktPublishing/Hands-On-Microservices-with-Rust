@@ -150,6 +150,11 @@ fn comments(_req: HttpRequest<State>) -> FutureResponse<HttpResponse> {
     Box::new(fut)
 }
 
+fn counter(req: HttpRequest<State>) -> String {
+    format!("{}", req.state().0.borrow())
+}
+
+
 #[derive(Default)]
 struct State(RefCell<i64>);
 
@@ -157,17 +162,16 @@ pub struct Counter;
 
 impl Middleware<State> for Counter {
     fn start(&self, req: &HttpRequest<State>) -> Result<Started> {
-        println!("Hi from start. You requested: {}", req.path());
+        let value = *req.state().0.borrow();
+        *req.state().0.borrow_mut() = value + 1;
         Ok(Started::Done)
     }
 
     fn response(&self, _req: &HttpRequest<State>, resp: HttpResponse) -> Result<Response> {
-        println!("Hi from response");
         Ok(Response::Done(resp))
     }
 
     fn finish(&self, _req: &HttpRequest<State>, _resp: &HttpResponse) -> Finished {
-        println!("Hi from finish");
         Finished::Done
     }
 }
@@ -184,12 +188,17 @@ fn main() {
                     .name("auth-example")
                     .secure(false),
                     ))
+            .middleware(Counter)
             .scope("/api", |scope| {
                 scope
                     .route("/signup", http::Method::POST, signup)
                     .route("/signin", http::Method::POST, signin)
                     .route("/new_comment", http::Method::POST, new_comment)
                     .route("/comments", http::Method::GET, comments)
+            })
+            .scope("/stat", |scope| {
+                scope
+                    .route("/counter", http::Method::GET, counter)
             })
             .handler(
                 "/",
