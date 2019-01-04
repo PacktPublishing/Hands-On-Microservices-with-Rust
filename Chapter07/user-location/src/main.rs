@@ -53,8 +53,8 @@ fn list_locations(conn: &DynamoDbClient, user_id: String) -> Result<Vec<Location
 struct Location {
     user_id: String,
     timestamp: String,
-    longitude: String,
     latitude: String,
+    longitude: String,
 }
 
 impl Location {
@@ -67,13 +67,13 @@ impl Location {
             .get("TimeStamp")
             .ok_or_else(|| format_err!("No TimeStamp in record"))
             .and_then(attr_to_string)?;
-        let longitude = map
-            .get("Longitude")
-            .ok_or_else(|| format_err!("No Longitude in record"))
-            .and_then(attr_to_string)?;
         let latitude = map
             .get("Latitude")
             .ok_or_else(|| format_err!("No Latitude in record"))
+            .and_then(attr_to_string)?;
+        let longitude = map
+            .get("Longitude")
+            .ok_or_else(|| format_err!("No Longitude in record"))
             .and_then(attr_to_string)?;
         let location = Location { user_id, timestamp, longitude, latitude };
         Ok(location)
@@ -108,12 +108,12 @@ fn main() -> Result<(), Error> {
                          .help("Sets the id of a user")
                          .required(true)
                          .index(1))
-                    .arg(Arg::with_name("LONGITUDE")
-                         .help("Sets a longitude of location")
-                         .required(true)
-                         .index(2))
                     .arg(Arg::with_name("LATITUDE")
                          .help("Sets a latitude of location")
+                         .required(true)
+                         .index(2))
+                    .arg(Arg::with_name("LONGITUDE")
+                         .help("Sets a longitude of location")
                          .required(true)
                          .index(3)))
         .subcommand(SubCommand::with_name(CMD_LIST).about("print all records for the user")
@@ -139,9 +139,9 @@ fn main() -> Result<(), Error> {
         (CMD_ADD, Some(matches)) => {
             let user_id = matches.value_of("USER_ID").unwrap().to_owned();
             let timestamp = Utc::now().to_string();
-            let longitude = matches.value_of("LONGITUDE").unwrap().to_owned();
             let latitude = matches.value_of("LATITUDE").unwrap().to_owned();
-            let location = Location { user_id, timestamp, longitude, latitude };
+            let longitude = matches.value_of("LONGITUDE").unwrap().to_owned();
+            let location = Location { user_id, timestamp, latitude, longitude };
             add_location(&client, location)?;
         }
         (CMD_LIST, Some(matches)) => {
