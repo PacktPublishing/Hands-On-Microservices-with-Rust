@@ -7,8 +7,53 @@ use rusoto_dynamodb::{AttributeValue, DynamoDb, DynamoDbClient,
     QueryInput, UpdateItemInput};
 use std::collections::HashMap;
 
-// TODO: add_location
-// TODO: list_locations
+fn add_location(conn: &DynamoDbClient, location: Location) -> Result<(), Error> {
+    let mut key: HashMap<String, AttributeValue> = HashMap::new();
+    key.insert("Uid".into(), s_attr(location.user_id));
+    key.insert("TimeStamp".into(), s_attr(location.timestamp));
+    let expression = format!("SET Longitude = :x, Latitude = :y");
+    let mut values = HashMap::new();
+    values.insert(":x".into(), s_attr(location.longitude));
+    values.insert(":y".into(), s_attr(location.latitude));
+    let update = UpdateItemInput {
+        table_name: "Locations".into(),
+        key,
+        update_expression: Some(expression),
+        expression_attribute_values: Some(values),
+        ..Default::default()
+    };
+    conn.update_item(update)
+        .sync()
+        .map(drop)
+        .map_err(Error::from)
+}
+
+fn list_locations(conn: &DynamoDbClient, user_id: String) -> Result<Vec<Location>, Error> {
+    let expression = format!("Uid = :uid");
+    let mut values = HashMap::new();
+    values.insert(":uid".into(), s_attr(user_id));
+    let query = QueryInput {
+        table_name: "Locations".into(),
+        key_condition_expression: Some(expression),
+        expression_attribute_values: Some(values),
+        ..Default::default()
+    };
+    let items = conn.query(query).sync()?
+        .items
+        .ok_or_else(|| format_err!("No Items"))?;
+    for item in items {
+        println!("{:?}", item);
+    }
+    Ok(vec![])
+}
+
+#[derive(Debug)]
+struct Location {
+    user_id: String,
+    timestamp: String,
+    longitude: String,
+    latitude: String,
+}
 
 const CMD_ADD: &str = "add";
 const CMD_LIST: &str = "list";
@@ -69,40 +114,16 @@ fn main() -> Result<(), Error> {
         (CMD_ADD, Some(matches)) => {
             let user_id = matches.value_of("USER_ID").unwrap().to_owned();
             let timestamp = Utc::now().to_string();
-            let mut key: HashMap<String, AttributeValue> = HashMap::new();
-            key.insert("Uid".into(), s_attr(user_id));
-            key.insert("TimeStamp".into(), s_attr(timestamp));
             let longitude = matches.value_of("LONGITUDE").unwrap().to_owned();
             let latitude = matches.value_of("LATITUDE").unwrap().to_owned();
-            let expression = format!("SET Longitude = :x, Latitude = :y");
-            let mut values = HashMap::new();
-            values.insert(":x".into(), s_attr(longitude));
-            values.insert(":y".into(), s_attr(latitude));
-            let update = UpdateItemInput {
-                table_name: "Locations".into(),
-                key,
-                update_expression: Some(expression),
-                expression_attribute_values: Some(values),
-                ..Default::default()
-            };
-            client.update_item(update).sync()?;
+            let location = Location { user_id, timestamp, longitude, latitude };
+            add_location(&client, location)?;
         }
         (CMD_LIST, Some(matches)) => {
             let user_id = matches.value_of("USER_ID").unwrap().to_owned();
-            let expression = format!("Uid = :uid");
-            let mut values = HashMap::new();
-            values.insert(":uid".into(), s_attr(user_id));
-            let query = QueryInput {
-                table_name: "Locations".into(),
-                key_condition_expression: Some(expression),
-                expression_attribute_values: Some(values),
-                ..Default::default()
-            };
-            let items = client.query(query).sync()?
-                .items
-                .ok_or_else(|| format_err!("No Items"))?;
-            for item in items {
-                println!("{:?}", item);
+            let locations = list_locations(&client, user_id)?;
+            for location in locations {
+                println!("{:?}", location);
             }
         }
         _ => {
