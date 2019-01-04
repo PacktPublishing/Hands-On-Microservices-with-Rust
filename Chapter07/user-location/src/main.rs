@@ -41,10 +41,12 @@ fn list_locations(conn: &DynamoDbClient, user_id: String) -> Result<Vec<Location
     let items = conn.query(query).sync()?
         .items
         .ok_or_else(|| format_err!("No Items"))?;
+    let mut locations = Vec::new();
     for item in items {
-        println!("{:?}", item);
+        let location = Location::from_map(item)?;
+        locations.push(location);
     }
-    Ok(vec![])
+    Ok(locations)
 }
 
 #[derive(Debug)]
@@ -53,6 +55,29 @@ struct Location {
     timestamp: String,
     longitude: String,
     latitude: String,
+}
+
+impl Location {
+    fn from_map(map: HashMap<String, AttributeValue>) -> Result<Location, Error> {
+        let user_id = map
+            .get("Uid")
+            .ok_or_else(|| format_err!("No Uid in record"))
+            .and_then(attr_to_string)?;
+        let timestamp = map
+            .get("TimeStamp")
+            .ok_or_else(|| format_err!("No TimeStamp in record"))
+            .and_then(attr_to_string)?;
+        let longitude = map
+            .get("Longitude")
+            .ok_or_else(|| format_err!("No Longitude in record"))
+            .and_then(attr_to_string)?;
+        let latitude = map
+            .get("Latitude")
+            .ok_or_else(|| format_err!("No Latitude in record"))
+            .and_then(attr_to_string)?;
+        let location = Location { user_id, timestamp, longitude, latitude };
+        Ok(location)
+    }
 }
 
 const CMD_ADD: &str = "add";
@@ -137,5 +162,13 @@ fn s_attr(s: String) -> AttributeValue {
     AttributeValue {
         s: Some(s),
         ..Default::default()
+    }
+}
+
+fn attr_to_string(attr: &AttributeValue) -> Result<String, Error> {
+    if let Some(value) = &attr.s {
+        Ok(value.to_owned())
+    } else {
+        Err(format_err!("no string value"))
     }
 }
