@@ -5,5 +5,3 @@ CREATE TABLE messages (
   user_id INTEGER NOT NULL REFERENCES users,
   text TEXT NOT NULL
 );
-
-SELECT diesel_manage_updated_at('messages');

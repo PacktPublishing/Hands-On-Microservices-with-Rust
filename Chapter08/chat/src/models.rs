@@ -24,6 +24,8 @@ pub struct Channel {
     pub user_id: Id,
     pub title: String,
     pub is_public: bool,
+    pub created_at: NaiveDateTime,
+    pub updated_at: NaiveDateTime,
 }
 
 #[derive(Debug, Insertable, Serialize, Deserialize)]
