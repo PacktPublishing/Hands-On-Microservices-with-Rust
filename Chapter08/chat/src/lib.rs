@@ -130,6 +130,13 @@ impl Api {
             .get_result(&self.conn)
             .map_err(Error::from)
     }
+
+    pub fn delete_message(&self, message_id: Id) -> Result<(), Error> {
+        diesel::delete(messages::table)
+            .filter(messages::id.eq(message_id))
+            .execute(&self.conn)?;
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -144,6 +151,8 @@ mod tests {
         let channel = api.create_channel(user_1.id, "My Channel", false).unwrap();
         api.publish_channel(channel.id).unwrap();
         api.add_member(channel.id, user_2.id).unwrap();
+        let message = api.add_message(channel.id, user_1.id, "Welcome!").unwrap();
         api.add_message(channel.id, user_2.id, "Hi!").unwrap();
+        api.delete_message(message.id).unwrap();
     }
 }
