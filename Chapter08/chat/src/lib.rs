@@ -4,7 +4,6 @@ extern crate chrono;
 extern crate clap;
 #[macro_use]
 extern crate diesel;
-extern crate dotenv;
 extern crate failure;
 #[macro_use]
 extern crate serde_derive;
@@ -25,8 +24,8 @@ pub struct Api {
 
 impl Api {
     pub fn connect() -> Result<Self, Error> {
-        dotenv::dotenv()?;
-        let database_url = env::var("DATABASE_URL")?;
+        let database_url = env::var("DATABASE_URL")
+            .unwrap_or("postgres://postgres@localhost:5432".to_string());
         let conn = PgConnection::establish(&database_url)?;
         Ok(Self { conn })
     }
@@ -131,6 +130,8 @@ impl Api {
 
 #[cfg(test)]
 mod tests {
+    use super::Api;
+
     #[test]
     fn create_users() {
         let api = Api::connect().unwrap();

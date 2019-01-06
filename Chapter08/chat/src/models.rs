@@ -73,11 +73,3 @@ pub struct NewMessage<'a> {
     pub text: &'a str,
 }
 */
-
-joinable!(messages -> channels (channel_id));
-joinable!(messages -> users (user_id));
-joinable!(memberships -> channels (channel_id));
-joinable!(memberships -> users (user_id));
-joinable!(channels -> users (user_id));
-
-allow_tables_to_appear_in_same_query!(messages, memberships, channels, users,);
