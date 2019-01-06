@@ -14,8 +14,6 @@ table! {
         id -> Int4,
         channel_id -> Int4,
         user_id -> Int4,
-        created_at -> Timestamp,
-        updated_at -> Timestamp,
     }
 }
 
@@ -26,8 +24,6 @@ table! {
         channel_id -> Int4,
         user_id -> Int4,
         text -> Text,
-        created_at -> Timestamp,
-        updated_at -> Timestamp,
     }
 }
 
@@ -35,8 +31,6 @@ table! {
     users (id) {
         id -> Int4,
         email -> Text,
-        created_at -> Timestamp,
-        updated_at -> Timestamp,
     }
 }
 

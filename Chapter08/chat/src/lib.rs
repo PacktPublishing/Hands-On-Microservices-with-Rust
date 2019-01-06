@@ -68,25 +68,25 @@ impl Api {
         })
     }
 
-    pub fn publish_channel(&self, channel_id: Id) -> Result<Channel, Error> {
-        use crate::schema::channels::dsl::*;
-        let channel = channels
-            .filter(id.eq(channel_id))
-            .select((id, user_id, title, is_public, created_at, updated_at))
+    pub fn publish_channel(&self, channel_id: Id) -> Result<(), Error> {
+        let channel = channels::table
+            .filter(channels::id.eq(channel_id))
+            .select((
+                    channels::id,
+                    channels::user_id,
+                    channels::title,
+                    channels::is_public,
+                    channels::created_at,
+                    channels::updated_at,
+                    ))
             .first::<Channel>(&self.conn)
             .optional()
             .map_err(Error::from)?;
         if let Some(channel) = channel {
-            diesel::update(channels.find(channel_id))
-                .set(is_public.eq(true))
-                .get_result::<Channel>(&self.conn)
-                .map_err(Error::from)
-            /*
-            diesel::update(channels::table)
-                .filter(channels::id.eq(channel.id))
+            diesel::update(&channel)
                 .set(channels::is_public.eq(true))
                 .execute(&self.conn)?;
-            */
+            Ok(())
         } else {
             Err(format_err!("channel not found"))
         }
