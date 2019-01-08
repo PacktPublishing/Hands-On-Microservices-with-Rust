@@ -10,7 +10,7 @@ pub struct User {
     pub email: String,
 }
 
-#[derive(Debug, Identifiable, Queryable, Serialize, Deserialize)]
+#[derive(Debug, Identifiable, Queryable, Associations, Serialize, Deserialize)]
 #[belongs_to(User)]
 #[table_name = "channels"]
 pub struct Channel {
@@ -22,7 +22,7 @@ pub struct Channel {
     pub updated_at: NaiveDateTime,
 }
 
-#[derive(Debug, Identifiable, Queryable, Serialize, Deserialize)]
+#[derive(Debug, Identifiable, Queryable, Associations, Serialize, Deserialize)]
 #[belongs_to(Channel)]
 #[belongs_to(User)]
 #[table_name = "memberships"]
@@ -32,7 +32,7 @@ pub struct Membership {
     pub user_id: Id,
 }
 
-#[derive(Debug, Identifiable, Queryable, Serialize, Deserialize)]
+#[derive(Debug, Identifiable, Queryable, Associations, Serialize, Deserialize)]
 #[belongs_to(Channel)]
 #[belongs_to(User)]
 #[table_name = "messages"]
