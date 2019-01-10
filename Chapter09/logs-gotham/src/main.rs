@@ -14,6 +14,7 @@ use gotham::pipeline::single_middleware;
 use gotham::router::Router;
 use gotham::router::builder::{DefineSingleRoute, DrawRoutes, build_router};
 use gotham::state::{FromState, State};
+use hyper::Response;
 use std::sync::{Arc, Mutex};
 use tokio::net::TcpStream;
 use tokio::runtime::Runtime;
@@ -34,26 +35,35 @@ impl ConnState {
     }
 }
 
-/*
-pub fn say_hello(state: State) -> (State, &'static str) {
-    //let conn = ConnState::borrow_from(&state);
-    (state, HELLO_WORLD)
-}
-*/
-
-fn connect(
-    s: &str,
-) -> impl Future<Item = (Client, Connection<TcpStream>), Error = tokio_postgres::Error> {
-    let builder = s.parse::<tokio_postgres::Config>().unwrap();
-    TcpStream::connect(&"127.0.0.1:5432".parse().unwrap())
-        .map_err(|e| panic!("{}", e))
-        .and_then(move |s| builder.connect_raw(s, NoTls))
-}
-
 fn say_hello(mut state: State) -> Box<HandlerFuture> {
     let conn = ConnState::borrow_from(&state);
-    let fut = (state, HELLO_WORLD).into_handler_future();
-    Box::new(fut)
+    let client_1 = conn.client.clone();
+    let client_2 = conn.client.clone();
+
+    let res = future::ok(())
+        .and_then(move |_| {
+            let mut client = client_1.lock().unwrap();
+            client.prepare("SELECT 1::INT4")
+        })
+        .and_then(move |statement| {
+            let mut client = client_2.lock().unwrap();
+            client.query(&statement, &[]).collect().map(|rows| {
+                rows[0].get::<_, i32>(0)
+            })
+        })
+        .then(|res| {
+            match res {
+                Ok(value) => {
+                    let value = format!("SQL: {}", value);
+                    Ok((state, Response::new(value.into())))
+                }
+                Err(_) => {
+                    Ok((state, Response::new(HELLO_WORLD.into())))
+                }
+            }
+        });
+
+    Box::new(res)
 }
 
 fn router(state: ConnState) -> Router {
@@ -68,7 +78,7 @@ fn router(state: ConnState) -> Router {
 pub fn main() -> Result<(), Error> {
     let mut runtime = Runtime::new()?;
 
-    let handshake = connect("user=postgres dbname=postgres");
+    let handshake = tokio_postgres::connect("postgres://postgres@localhost:5432", NoTls);
     let (mut client, connection) = runtime.block_on(handshake)?;
     runtime.spawn(connection.map_err(drop));
 
