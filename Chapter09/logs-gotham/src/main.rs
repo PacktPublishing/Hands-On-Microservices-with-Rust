@@ -1,6 +1,5 @@
 use failure::{Error, format_err};
-use futures::{Future, Stream};
-use futures::future;
+use futures::{Future, Stream, future};
 use gotham::handler::HandlerFuture;
 use gotham::middleware::state::StateMiddleware;
 use gotham::pipeline::single::single_pipeline;
@@ -9,7 +8,7 @@ use gotham::router::Router;
 use gotham::router::builder::{DefineSingleRoute, DrawRoutes, build_router};
 use gotham::state::{FromState, State};
 use gotham_derive::StateData;
-use hyper::Response;
+use hyper::{Response, StatusCode};
 use hyper::header::{HeaderMap, USER_AGENT};
 use std::sync::{Arc, Mutex};
 use tokio::runtime::Runtime;
@@ -51,15 +50,22 @@ fn register_user_agent(state: State) -> Box<HandlerFuture> {
             })
         })
         .then(|res| {
-            match res {
-                Ok(value) => {
-                    let value = format!("SQL: {}", value);
-                    Ok((state, Response::new(value.into())))
+            let mut builder = Response::builder();
+            let body = {
+                match res {
+                    Ok(value) => {
+                        let value = format!("User-Agent: {}", value);
+                        builder.status(StatusCode::OK);
+                        value.into()
+                    }
+                    Err(err) => {
+                        builder.status(StatusCode::INTERNAL_SERVER_ERROR);
+                        err.to_string().into()
+                    }
                 }
-                Err(err) => {
-                    Ok((state, Response::new(err.to_string().into())))
-                }
-            }
+            };
+            let response = builder.body(body).unwrap();
+            Ok((state, response))
         });
 
     Box::new(res)
