@@ -20,8 +20,6 @@ use tokio::net::TcpStream;
 use tokio::runtime::Runtime;
 use tokio_postgres::{Client, Connection, NoTls};
 
-const HELLO_WORLD: &'static str = "Hello World!";
-
 #[derive(Clone, StateData)]
 struct ConnState {
     client: Arc<Mutex<Client>>,
@@ -43,12 +41,13 @@ fn say_hello(mut state: State) -> Box<HandlerFuture> {
     let res = future::ok(())
         .and_then(move |_| {
             let mut client = client_1.lock().unwrap();
-            client.prepare("SELECT 1::INT4")
+            client.prepare("INSERT INTO agents (agent) VALUES ($1)
+                            RETURNING agent")
         })
         .and_then(move |statement| {
             let mut client = client_2.lock().unwrap();
-            client.query(&statement, &[]).collect().map(|rows| {
-                rows[0].get::<_, i32>(0)
+            client.query(&statement, &[&"User Agent"]).collect().map(|rows| {
+                rows[0].get::<_, String>(0)
             })
         })
         .then(|res| {
@@ -57,8 +56,8 @@ fn say_hello(mut state: State) -> Box<HandlerFuture> {
                     let value = format!("SQL: {}", value);
                     Ok((state, Response::new(value.into())))
                 }
-                Err(_) => {
-                    Ok((state, Response::new(HELLO_WORLD.into())))
+                Err(err) => {
+                    Ok((state, Response::new(err.to_string().into())))
                 }
             }
         });
@@ -82,13 +81,12 @@ pub fn main() -> Result<(), Error> {
     let (mut client, connection) = runtime.block_on(handshake)?;
     runtime.spawn(connection.map_err(drop));
 
-    let prepare = client.prepare("SELECT 1::INT4");
-    let statement = runtime.block_on(prepare).unwrap();
-    let select = client.query(&statement, &[]).collect().map(|rows| {
-        println!("{:?}", rows[0].get::<_, i32>(0));
-    });
-    let res = runtime.block_on(select).unwrap();
-    println!("{:?}", res);
+    let execute = client.batch_execute(
+        "CREATE TABLE IF NOT EXISTS agents (
+            agent TEXT NOT NULL,
+            timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        );");
+    let statement = runtime.block_on(execute).unwrap();
 
     let state = ConnState::new(client);
     let router = router(state);
