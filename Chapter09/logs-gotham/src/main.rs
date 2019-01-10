@@ -7,7 +7,7 @@ extern crate mime;
 use failure::{Error, format_err};
 use futures::{Future, Stream};
 use futures::future;
-use gotham::handler::{IntoHandlerFuture, HandlerFuture};
+use gotham::handler::HandlerFuture;
 use gotham::middleware::state::StateMiddleware;
 use gotham::pipeline::single::single_pipeline;
 use gotham::pipeline::single_middleware;
@@ -15,10 +15,10 @@ use gotham::router::Router;
 use gotham::router::builder::{DefineSingleRoute, DrawRoutes, build_router};
 use gotham::state::{FromState, State};
 use hyper::Response;
+use hyper::header::{HeaderMap, USER_AGENT};
 use std::sync::{Arc, Mutex};
-use tokio::net::TcpStream;
 use tokio::runtime::Runtime;
-use tokio_postgres::{Client, Connection, NoTls};
+use tokio_postgres::{Client, NoTls};
 
 #[derive(Clone, StateData)]
 struct ConnState {
@@ -33,7 +33,12 @@ impl ConnState {
     }
 }
 
-fn say_hello(mut state: State) -> Box<HandlerFuture> {
+fn register_user_agent(state: State) -> Box<HandlerFuture> {
+    let user_agent = HeaderMap::borrow_from(&state)
+        .get(USER_AGENT)
+        .map(|value| value.to_str().unwrap().to_string())
+        .unwrap_or_else(|| "<undefined>".into());
+
     let conn = ConnState::borrow_from(&state);
     let client_1 = conn.client.clone();
     let client_2 = conn.client.clone();
@@ -46,7 +51,7 @@ fn say_hello(mut state: State) -> Box<HandlerFuture> {
         })
         .and_then(move |statement| {
             let mut client = client_2.lock().unwrap();
-            client.query(&statement, &[&"User Agent"]).collect().map(|rows| {
+            client.query(&statement, &[&user_agent]).collect().map(|rows| {
                 rows[0].get::<_, String>(0)
             })
         })
@@ -70,7 +75,7 @@ fn router(state: ConnState) -> Router {
     let pipeline = single_middleware(middleware);
     let (chain, pipelines) = single_pipeline(pipeline);
     build_router(chain, pipelines, |route| {
-        route.get("/").to(say_hello);
+        route.get("/").to(register_user_agent);
     })
 }
 
@@ -86,7 +91,7 @@ pub fn main() -> Result<(), Error> {
             agent TEXT NOT NULL,
             timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW()
         );");
-    let statement = runtime.block_on(execute).unwrap();
+    runtime.block_on(execute)?;
 
     let state = ConnState::new(client);
     let router = router(state);
