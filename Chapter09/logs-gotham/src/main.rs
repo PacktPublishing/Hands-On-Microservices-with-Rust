@@ -1,9 +1,3 @@
-extern crate gotham;
-#[macro_use]
-extern crate gotham_derive;
-extern crate hyper;
-extern crate mime;
-
 use failure::{Error, format_err};
 use futures::{Future, Stream};
 use futures::future;
@@ -14,6 +8,7 @@ use gotham::pipeline::single_middleware;
 use gotham::router::Router;
 use gotham::router::builder::{DefineSingleRoute, DrawRoutes, build_router};
 use gotham::state::{FromState, State};
+use gotham_derive::StateData;
 use hyper::Response;
 use hyper::header::{HeaderMap, USER_AGENT};
 use std::sync::{Arc, Mutex};

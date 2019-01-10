@@ -10,6 +10,5 @@ futures = "0.1"
 gotham = "0.3"
 gotham_derive = "0.3"
 hyper = "0.12"
-mime = "0.3"
 tokio = "0.1"
 tokio-postgres = { git = "https://github.com/sfackler/rust-postgres" }
