@@ -1,9 +1,3 @@
-extern crate futures;
-extern crate hyper;
-extern crate serde_json;
-extern crate image;
-extern crate queryst;
-
 use image::{ImageResult, FilterType};
 use std::io::{Error, ErrorKind};
 use std::thread;
