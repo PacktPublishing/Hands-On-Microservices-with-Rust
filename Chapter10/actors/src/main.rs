@@ -11,7 +11,7 @@ mod actors;
 
 use self::actors::{
     count::{Count, CountActor},
-    log::{LogActor},
+    log::{Log, LogActor},
     resize::{Resize, ResizeActor},
 };
 
@@ -30,14 +30,23 @@ fn to_number(value: &Value, default: u16) -> u16 {
         .unwrap_or(default)
 }
 
+fn count_up(state: &State, path: &str) -> impl Future<Item=(), Error=Error> {
+    let path = path.to_string();
+    let log = state.log.clone();
+    state.count.send(Count(path.clone()))
+        .and_then(move |value| {
+            let message = format!("total requests for '{}' is {}", path, value);
+            log.send(Log(message))
+        })
+        .map_err(|err| other(err.compat()))
+}
+
 fn microservice_handler(state: &State, req: Request<Body>)
     -> Box<Future<Item=Response<Body>, Error=Error> + Send>
 {
     match (req.method(), req.uri().path().to_owned().as_ref()) {
         (&Method::GET, "/") => {
-            let fut = state.count.send(Count("/".into()))
-                .map(|_| Response::new(INDEX.into()))
-                .map_err(|err| other(err.compat()));
+            let fut = count_up(state, "/").map(|_| Response::new(INDEX.into()));
             Box::new(fut)
         },
         (&Method::POST, "/resize") => {
@@ -68,7 +77,8 @@ fn microservice_handler(state: &State, req: Request<Body>)
                 .map(|resp| {
                     Response::new(resp.into())
                 });
-            Box::new(body)
+            let fut = count_up(state, "/resize").and_then(move |_| body);
+            Box::new(fut)
         },
         _ => {
             response_with_code(StatusCode::NOT_FOUND)
@@ -107,9 +117,6 @@ fn main() {
             let state = state.clone();
             service_fn(move |req| microservice_handler(&state, req))
         });
-        let server = server.map_err(drop);
-
-        server
+        server.map_err(drop)
     });
-    //hyper::rt::run(server);
 }
