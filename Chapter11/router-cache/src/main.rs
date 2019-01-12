@@ -1,6 +1,6 @@
 mod cache;
 
-use actix::{Addr, SyncArbiter};
+use actix::SyncArbiter;
 use actix_web::{
     client, middleware, server, fs, App, Error, Form, HttpMessage,
     HttpRequest, HttpResponse, FutureResponse, Result,
@@ -9,10 +9,10 @@ use actix_web::http::{self, header, StatusCode};
 use actix_web::middleware::{Finished, Middleware, Response, Started};
 use actix_web::middleware::identity::RequestIdentity;
 use actix_web::middleware::identity::{CookieIdentityPolicy, IdentityService};
-use crate::cache::{CacheActor, GetValue, SetValue};
+use crate::cache::{CacheActor, CacheLink};
 use failure::format_err;
 use futures::{IntoFuture, Future, future};
-use log::{error};
+use log::{debug, error};
 use serde::{Deserialize, Serialize};
 use serde_derive::{Deserialize, Serialize};
 use std::cell::RefCell;
@@ -138,7 +138,7 @@ fn new_comment((req, params): (HttpRequest<State>, Form<AddComment>)) -> FutureR
 
 fn comments(req: HttpRequest<State>) -> FutureResponse<HttpResponse> {
     let fut = get_request("http://127.0.0.1:8003/list");
-    let fut = cache(req.state().cache(), "/list", fut)
+    let fut = req.state().cache("/list", fut)
         .map(|data| {
             HttpResponse::Ok().body(data)
         });
@@ -149,70 +149,46 @@ fn counter(req: HttpRequest<State>) -> String {
     format!("{}", req.state().counter.borrow())
 }
 
-//TODO! Use state().cache("/path") - method
-//TODO! Move to CacheLink impl
-fn cache<F>(link: CacheLink, path: &str, fut: F)
-    -> impl Future<Item = Vec<u8>, Error = Error>
-where
-    F: Future<Item = Vec<u8>, Error = Error>,
-{
-    let path = path.to_owned();
-    link.clone().get_value(&path)
-        .from_err::<Error>()
-        .or_else(move |_| fut)
-        .and_then(move |data| {
-            link.set_value(&path, &data)
-                .then(move |_| future::ok::<_, Error>(data))
-                .from_err::<Error>()
-        })
-}
 
 
 struct State {
     counter: RefCell<i64>,
-    cache: Addr<CacheActor>,
+    cache: CacheLink,
 }
 
 impl State {
-    fn new(cache: Addr<CacheActor>) -> Self {
+    fn new(cache: CacheLink) -> Self {
         Self {
             counter: RefCell::default(),
             cache,
         }
     }
 
-    fn cache(&self) -> CacheLink {
-        CacheLink {
-            addr: self.cache.clone(),
-        }
-    }
-}
-
-#[derive(Clone)]
-struct CacheLink {
-    addr: Addr<CacheActor>,
-}
-
-impl CacheLink {
-    fn get_value(&self, path: &str) -> Box<Future<Item = Vec<u8>, Error = failure::Error>> {
-        let msg = GetValue {
-            path: path.to_owned(),
-        };
-        let fut = self.addr.send(msg)
-            .from_err::<failure::Error>()
-            .and_then(|x| x.map_err(failure::Error::from));
-        Box::new(fut)
-    }
-
-    fn set_value(&self, path: &str, value: &[u8]) -> Box<Future<Item = (), Error = failure::Error>> {
-        let msg = SetValue {
-            path: path.to_owned(),
-            content: value.to_owned(),
-        };
-        let fut = self.addr.send(msg)
-            .from_err::<failure::Error>()
-            .and_then(|x| x.map_err(failure::Error::from));
-        Box::new(fut)
+    fn cache<F>(&self, path: &str, fut: F)
+        -> impl Future<Item = Vec<u8>, Error = Error>
+    where
+        F: Future<Item = Vec<u8>, Error = Error> + 'static,
+    {
+        let link = self.cache.clone();
+        let path = path.to_owned();
+        link.get_value(&path)
+            .from_err::<Error>()
+            .and_then(move |opt| {
+                if let Some(cached) = opt {
+                    debug!("Cached value used");
+                    boxed(future::ok(cached))
+                } else {
+                    let res = fut.and_then(move |data| {
+                        link.set_value(&path, &data)
+                            .then(move |_| {
+                                debug!("Cache updated");
+                                future::ok::<_, Error>(data)
+                            })
+                            .from_err::<Error>()
+                    });
+                    boxed(res)
+                }
+            })
     }
 }
 
@@ -239,11 +215,12 @@ fn main() {
     let sys = actix::System::new("router");
 
     let addr = SyncArbiter::start(3, || {
-        CacheActor::new("redis://127.0.0.1/", 10)
+        CacheActor::new("redis://127.0.0.1:6379/", 10)
     });
+    let cache = CacheLink::new(addr);
 
     server::new(move || {
-        let state = State::new(addr.clone());
+        let state = State::new(cache.clone());
         App::with_state(state)
             .middleware(middleware::Logger::default())
             .middleware(IdentityService::new(
