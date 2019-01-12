@@ -1,5 +1,6 @@
 mod cache;
 
+use actix::{Addr, SyncArbiter};
 use actix_web::{
     client, middleware, server, fs, App, Error, Form, HttpMessage,
     HttpRequest, HttpResponse, FutureResponse, Result,
@@ -8,8 +9,9 @@ use actix_web::http::{self, header, StatusCode};
 use actix_web::middleware::{Finished, Middleware, Response, Started};
 use actix_web::middleware::identity::RequestIdentity;
 use actix_web::middleware::identity::{CookieIdentityPolicy, IdentityService};
+use crate::cache::{CacheActor, GetValue, SetValue};
 use failure::format_err;
-use futures::{IntoFuture, Future};
+use futures::{IntoFuture, Future, future};
 use log::{error};
 use serde::{Deserialize, Serialize};
 use serde_derive::{Deserialize, Serialize};
@@ -134,8 +136,9 @@ fn new_comment((req, params): (HttpRequest<State>, Form<AddComment>)) -> FutureR
     Box::new(fut)
 }
 
-fn comments(_req: HttpRequest<State>) -> FutureResponse<HttpResponse> {
-    let fut = get_request("http://127.0.0.1:8003/list")
+fn comments(req: HttpRequest<State>) -> FutureResponse<HttpResponse> {
+    let fut = get_request("http://127.0.0.1:8003/list");
+    let fut = cache(req.state(), "/list", fut)
         .map(|data| {
             HttpResponse::Ok().body(data)
         });
@@ -143,19 +146,68 @@ fn comments(_req: HttpRequest<State>) -> FutureResponse<HttpResponse> {
 }
 
 fn counter(req: HttpRequest<State>) -> String {
-    format!("{}", req.state().0.borrow())
+    format!("{}", req.state().counter.borrow())
+}
+
+fn cache<F>(state: &State, path: &str, fut: F)
+    -> impl Future<Item = Vec<u8>, Error = Error>
+where
+    F: Future<Item = Vec<u8>, Error = Error>,
+{
+    let path = path.to_owned();
+    let addr = state.cache.clone();
+    get_value(addr.clone(), &path)
+        .from_err::<Error>()
+        .or_else(move |_| fut)
+        .and_then(move |data| {
+            set_value(addr, &path, &data)
+                .then(move |_| future::ok::<_, Error>(data))
+                .from_err::<Error>()
+        })
 }
 
 
-#[derive(Default)]
-struct State(RefCell<i64>);
+struct State {
+    counter: RefCell<i64>,
+    cache: Addr<CacheActor>,
+}
+
+fn get_value(addr: Addr<CacheActor>, path: &str) -> Box<Future<Item = Vec<u8>, Error = failure::Error>> {
+    let msg = GetValue {
+        path: path.to_owned(),
+    };
+    let fut = addr.send(msg)
+        .from_err::<failure::Error>()
+        .and_then(|x| x.map_err(failure::Error::from));
+    Box::new(fut)
+}
+
+fn set_value(addr: Addr<CacheActor>, path: &str, value: &[u8]) -> Box<Future<Item = (), Error = failure::Error>> {
+    let msg = SetValue {
+        path: path.to_owned(),
+        content: value.to_owned(),
+    };
+    let fut = addr.send(msg)
+        .from_err::<failure::Error>()
+        .and_then(|x| x.map_err(failure::Error::from));
+    Box::new(fut)
+}
+
+impl State {
+    fn new(cache: Addr<CacheActor>) -> Self {
+        Self {
+            counter: RefCell::default(),
+            cache,
+        }
+    }
+}
 
 pub struct Counter;
 
 impl Middleware<State> for Counter {
     fn start(&self, req: &HttpRequest<State>) -> Result<Started> {
-        let value = *req.state().0.borrow();
-        *req.state().0.borrow_mut() = value + 1;
+        let value = *req.state().counter.borrow();
+        *req.state().counter.borrow_mut() = value + 1;
         Ok(Started::Done)
     }
 
@@ -172,8 +224,13 @@ fn main() {
     env_logger::init();
     let sys = actix::System::new("router");
 
-    server::new(|| {
-        App::with_state(State::default())
+    let addr = SyncArbiter::start(3, || {
+        CacheActor::new("redis://127.0.0.1/", 10)
+    });
+
+    server::new(move || {
+        let state = State::new(addr.clone());
+        App::with_state(state)
             .middleware(middleware::Logger::default())
             .middleware(IdentityService::new(
                     CookieIdentityPolicy::new(&[0; 32])
