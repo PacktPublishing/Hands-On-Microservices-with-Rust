@@ -1,13 +1,3 @@
-extern crate actix;
-extern crate actix_web;
-extern crate env_logger;
-extern crate failure;
-extern crate futures;
-extern crate log;
-extern crate serde;
-extern crate serde_derive;
-extern crate serde_urlencoded;
-
 use actix_web::{
     client, middleware, server, fs, App, Error, Form, HttpMessage,
     HttpRequest, HttpResponse, FutureResponse, Result,
