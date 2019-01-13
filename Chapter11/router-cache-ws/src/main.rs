@@ -256,7 +256,7 @@ fn main() {
                     .route("/comments", http::Method::GET, comments)
             })
             .route("/stats/counter", http::Method::GET, counter)
-            .resource("/ws/", |r| r.method(http::Method::GET).f(ws_connect))
+            .resource("/ws", |r| r.method(http::Method::GET).f(ws_connect))
             .handler(
                 "/",
                 fs::StaticFiles::new("./static/").unwrap().index_file("index.html")
