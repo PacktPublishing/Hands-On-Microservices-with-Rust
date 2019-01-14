@@ -21,13 +21,15 @@ enum Action {
 }
 
 struct Remote {
-    addr: String,
+    client: Client,
 }
 
 impl Remote {
     fn new(addr: SocketAddr) -> Self {
+        let url = format!("http://{}", addr);
+        let client = Client::new(url, None, None);
         Self {
-            addr: format!("http://{}", addr),
+            client
         }
     }
 
@@ -43,9 +45,8 @@ impl Remote {
     where
         T: for <'de> Deserialize<'de>,
     {
-        let client = Client::new(self.addr.clone(), None, None);
-        let request = client.build_request(meth, args);
-        client.send_request(&request).and_then(|res| res.into_result::<T>())
+        let request = self.client.build_request(meth, args);
+        self.client.send_request(&request).and_then(|res| res.into_result::<T>())
     }
 }
 
