@@ -1,0 +1,11 @@
+[package]
+name = "grpc-ring"
+version = "0.1.0"
+authors = ["Denis Kolodin <deniskolodin@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+grpc = { git = "https://github.com/stepancheg/grpc-rust" }
+
+[build-dependencies]
+protoc-rust-grpc = { git = "https://github.com/stepancheg/grpc-rust" }
