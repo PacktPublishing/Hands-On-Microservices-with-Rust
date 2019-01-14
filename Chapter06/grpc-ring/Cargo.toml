@@ -16,7 +16,7 @@ protoc-rust-grpc = { git = "https://github.com/stepancheg/grpc-rust" }
 
 [[bin]]
 name = "grpc-ring"
-path = "src/main.rs"
+path = "src/server.rs"
 test = false
 
 [[bin]]

@@ -1,12 +1,11 @@
-mod client;
 mod ring;
 mod ring_grpc;
 
-use crate::client::Remote;
 use crate::ring::Empty;
-use crate::ring_grpc::{Ring, RingClient, RingServer};
+use crate::ring_grpc::{Ring, RingServer};
 use failure::Error;
-use grpc::{ClientConf, ClientStubExt, Error as GrpcError, ServerBuilder, SingleResponse, RequestOptions};
+use grpc::{Error as GrpcError, ServerBuilder, SingleResponse, RequestOptions};
+use grpc_ring::Remote;
 use log::{debug, trace};
 use std::env;
 use std::net::SocketAddr;
@@ -64,21 +63,21 @@ impl Ring for RingImpl {
 }
 
 fn main() -> Result<(), Error> {
+    env_logger::init();
     let (tx, rx) = channel();
-
     let addr: SocketAddr = env::var("ADDRESS")?.parse()?;
     let mut server = ServerBuilder::new_plain();
     server.http.set_addr(addr)?;
     let ring = RingImpl::new(tx);
     server.add_service(RingServer::new_service_def(ring));
     server.http.set_cpu_pool_threads(4);
-    let _ = server.build().unwrap();
+    let _server = server.build()?;
 
     worker_loop(rx)
 }
 
 fn worker_loop(receiver: Receiver<Action>) -> Result<(), Error> {
-    let next: SocketAddr = env::var("NEXT")?.parse()?;
+    let next = env::var("NEXT")?.parse()?;
     let remote = Remote::new(next)?;
     let mut in_roll_call = false;
     for action in receiver.iter() {
@@ -108,5 +107,6 @@ fn worker_loop(receiver: Receiver<Action>) -> Result<(), Error> {
             }
         }
     }
+    println!("DONE");
     Ok(())
 }
