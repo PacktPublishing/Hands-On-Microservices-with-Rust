@@ -5,10 +5,10 @@ authors = ["Denis Kolodin <deniskolodin@gmail.com>"]
 edition = "2018"
 
 [dependencies]
+env_logger = "0.6"
 failure = "0.1"
 jsonrpc = { git = "https://github.com/apoelstra/rust-jsonrpc" }
 jsonrpc-http-server = { git = "https://github.com/paritytech/jsonrpc" }
 log = "0.4"
-env_logger = "0.6"
 serde = "1.0"
 serde_derive = "1.0"
