@@ -7,7 +7,9 @@ edition = "2018"
 [dependencies]
 actix = "0.7"
 actix-web = "0.7"
+askama = "0.7"
 env_logger = "0.6"
+indexmap = "1.0"
 failure = "0.1"
 futures = "0.1"
 log = "0.4"
@@ -30,3 +32,6 @@ test = false
 name = "rabbit-actix-worker"
 path = "src/worker.rs"
 test = false
+
+[build-dependencies]
+askama = "0.7"

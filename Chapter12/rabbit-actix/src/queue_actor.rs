@@ -22,6 +22,8 @@ pub trait QueueHandler: 'static {
     fn handle(&self, incoming: Self::Incoming) -> Result<Option<Self::Outgoing>, Error>;
 }
 
+type TaskId = ShortString;
+
 struct AttachStream(Consumer<TcpStream>);
 
 impl Message for AttachStream {
@@ -31,7 +33,7 @@ impl Message for AttachStream {
 pub struct SendMessage<T>(pub T);
 
 impl<T> Message for SendMessage<T> {
-    type Result = ();
+    type Result = TaskId;
 }
 
 pub struct QueueActor<T: QueueHandler> {
@@ -55,11 +57,12 @@ impl<T: QueueHandler> Handler<AttachStream> for QueueActor<T> {
 }
 
 impl<T: QueueHandler> Handler<SendMessage<T::Outgoing>> for QueueActor<T> {
-    type Result = ();
+    type Result = TaskId;
 
     fn handle(&mut self, msg: SendMessage<T::Outgoing>, ctx: &mut Self::Context) -> Self::Result {
         let corr_id = Uuid::new_v4().to_simple().to_string();
-        self.send_message(corr_id, msg.0, ctx);
+        self.send_message(corr_id.clone(), msg.0, ctx);
+        corr_id
     }
 }
 

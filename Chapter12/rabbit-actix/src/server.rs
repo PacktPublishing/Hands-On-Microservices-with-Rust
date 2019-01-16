@@ -1,17 +1,30 @@
 use actix::{Actor, Addr, System};
 use actix_web::{http, middleware, server, App, Error as WebError, HttpRequest, HttpResponse};
+use askama::Template;
+use indexmap::IndexMap;
 use failure::Error;
 use futures::Future;
-use lapin::channel::{BasicProperties, BasicPublishOptions, Channel};
+use lapin::channel::Channel;
 use log::debug;
 use rabbit_actix::{REQUESTS, RESPONSES};
 use rabbit_actix::queue_actor::{SendMessage, QueueActor, QueueHandler};
-use std::cell::RefCell;
+use std::sync::{Arc, Mutex};
 use tokio::net::TcpStream;
+
+#[derive(Template)]
+#[template(path = "tasks.html")]
+struct Tasks {
+    tasks: Vec<String>,
+}
+
+enum Status {
+    InProgress,
+    Done,
+}
 
 #[derive(Clone)]
 struct State {
-    cell: RefCell<u8>,
+    tasks: Arc<Mutex<IndexMap<String, Status>>>, // Add DateTime
     channel: Channel<TcpStream>,
     addr: Addr<QueueActor<ServerHandler>>,
 }
@@ -19,31 +32,28 @@ struct State {
 fn snd_msg(req: HttpRequest<State>)
     -> impl Future<Item = HttpResponse, Error = WebError>
 {
-    let inc = *req.state().cell.borrow() + 1;
-    req.state().cell.replace(inc);
-    req.state().addr.send(SendMessage(format!("value={}", inc)))
+    req.state().addr.send(SendMessage(format!("value text")))
         .from_err::<WebError>()
-        .map(|_| {
+        .map(move |task_id| {
+            req.state().tasks.lock()
+                .unwrap()
+                .insert(task_id, Status::InProgress);
             HttpResponse::Ok().body(format!("Sent"))
         })
 }
 
-/*
 fn index(req: HttpRequest<State>)
     -> impl Future<Item = HttpResponse, Error = WebError>
 {
-    let opts = BasicPublishOptions::default();
-    let prop = BasicProperties::default()
-        .with_delivery_mode(2)
-        .with_correlation_id("corr".to_string());
-    let data = "content".to_string().into_bytes();
-    req.state().channel.basic_publish("", rabbit_actix::REQUESTS, data, opts, prop)
-        .map_err(|err| WebError::from(Error::from(err)))
-        .map(|_| {
-            HttpResponse::Ok().body(format!("Sent"))
-        })
+    let tasks = req.state().tasks.lock()
+        .unwrap()
+        .keys()
+        .cloned()
+        .collect::<Vec<_>>();
+        //.join(",");
+    let tmpl = Tasks { tasks };
+    futures::future::ok(HttpResponse::Ok().body(tmpl.render().unwrap()))
 }
-*/
 
 fn main() -> Result<(), Error> {
     env_logger::init();
@@ -52,13 +62,17 @@ fn main() -> Result<(), Error> {
     let actor = QueueActor::new(channel.clone(), ServerHandler {});
     let addr = actor.start();
 
-    let state = State { cell: RefCell::new(0), channel, addr };
+    let state = State {
+        tasks: Arc::new(Mutex::new(IndexMap::new())),
+        channel,
+        addr,
+    };
     server::new(move || {
         App::with_state(state.clone())
             .middleware(middleware::Logger::default())
             //.resource("/", |r| r.f(index))
             .resource("/", |r| r.method(http::Method::GET).with_async(snd_msg))
-            //.resource("/x", |r| r.method(http::Method::GET).with_async(index))
+            .resource("/tasks", |r| r.method(http::Method::GET).with_async(index))
     }).bind("127.0.0.1:8080")
     .unwrap()
         .start();
