@@ -1,3 +1,5 @@
+pub mod queue_actor;
+
 use actix::SystemRunner;
 use failure::Error;
 use futures::Future;
@@ -8,7 +10,8 @@ use lapin::queue::Queue;
 use lapin::types::FieldTable;
 use tokio::net::TcpStream;
 
-pub const QUEUE: &str = "tasks";
+pub const REQUESTS: &str = "requests";
+pub const RESPONSES: &str = "responses";
 
 pub fn spawn_client(sys: &mut SystemRunner) -> Result<Channel<TcpStream>, Error> {
     let addr = "127.0.0.1:5672".parse().unwrap();
@@ -25,13 +28,13 @@ pub fn spawn_client(sys: &mut SystemRunner) -> Result<Channel<TcpStream>, Error>
     Ok(channel)
 }
 
-pub fn ensure_queue(chan: &Channel<TcpStream>)
+pub fn ensure_queue(chan: &Channel<TcpStream>, name: &str)
     -> impl Future<Item = Queue, Error = LapinError>
 {
     let opts = QueueDeclareOptions {
-        durable: true,
+        //durable: true,
         ..Default::default()
     };
     let table = FieldTable::new();
-    chan.queue_declare(QUEUE, opts, table)
+    chan.queue_declare(name, opts, table)
 }

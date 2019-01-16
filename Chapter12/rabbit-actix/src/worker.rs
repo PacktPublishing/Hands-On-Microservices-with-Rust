@@ -3,13 +3,16 @@ use actix::fut::wrap_future;
 use failure::Error;
 use futures::Future;
 use lapin::types::FieldTable;
-use lapin::channel::{BasicConsumeOptions, Channel};
+use lapin::channel::{BasicConsumeOptions, BasicProperties, BasicPublishOptions, Channel};
 use lapin::consumer::Consumer;
 use lapin::error::Error as LapinError;
 use lapin::message::Delivery;
-use log::debug;
+use log::{debug, warn};
+use rabbit_actix::{ensure_queue, REQUESTS, RESPONSES};
+use rabbit_actix::queue_actor::{QueueActor, QueueHandler};
 use tokio::net::TcpStream;
 
+/*
 struct AttachStream(Consumer<TcpStream>);
 
 impl Message for AttachStream {
@@ -36,6 +39,19 @@ impl StreamHandler<Delivery, LapinError> for WorkerActor {
             .basic_ack(item.delivery_tag, false)
             .map_err(drop);
         ctx.spawn(wrap_future(fut));
+        if let Some(corr_id) = item.properties.correlation_id() {
+            let opts = BasicPublishOptions::default();
+            let props = BasicProperties::default()
+                .with_correlation_id(corr_id.to_owned());
+            let data = "content".to_string().into_bytes();
+            let fut = self.channel
+                .basic_publish("", RESPONSES, data, opts, props)
+                .map(drop)
+                .map_err(drop);
+            ctx.spawn(wrap_future(fut));
+        } else {
+            warn!("Message has no address for the response");
+        }
     }
 }
 
@@ -45,7 +61,7 @@ impl Actor for WorkerActor {
     fn started(&mut self, ctx: &mut Self::Context) {
         let chan = self.channel.clone();
         let addr = ctx.address();
-        let fut = rabbit_actix::ensure_queue(&chan)
+        let fut = ensure_queue(&chan, REQUESTS)
             .and_then(move |queue| {
                 let opts = BasicConsumeOptions::default();
                 let table = FieldTable::new();
@@ -62,13 +78,33 @@ impl Actor for WorkerActor {
         ctx.spawn(wrap_future(fut));
     }
 }
+*/
+
+struct WokerHandler {
+}
+
+impl QueueHandler for WokerHandler {
+    type Incoming = String;
+    type Outgoing = String;
+
+    fn incoming(&self) -> &str {
+        REQUESTS
+    }
+    fn outgoing(&self) -> &str {
+        RESPONSES
+    }
+    fn handle(&self, incoming: Self::Incoming) -> Result<Option<Self::Outgoing>, Error> {
+        debug!("WORKER: {}", incoming);
+        Ok(Some(incoming))
+    }
+}
 
 fn main() -> Result<(), Error> {
     env_logger::init();
     let mut sys = System::new("rabbit-actix-worker");
 
     let channel = rabbit_actix::spawn_client(&mut sys)?;
-    let actor = WorkerActor { channel };
+    let actor = QueueActor::new(channel, WokerHandler {});
     let _addr = actor.start();
 
     sys.run();
