@@ -1,0 +1,28 @@
+[package]
+name = "rabbit-actix"
+version = "0.1.0"
+authors = ["Denis Kolodin <deniskolodin@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+actix = "0.7"
+actix-web = "0.7"
+env_logger = "0.6"
+failure = "0.1"
+futures = "0.1"
+log = "0.4"
+tokio = "0.1"
+
+[dependencies.lapin]
+version = "0.15"
+package = "lapin-futures"
+
+[[bin]]
+name = "rabbit-actix-server"
+path = "src/server.rs"
+test = false
+
+[[bin]]
+name = "rabbit-actix-worker"
+path = "src/worker.rs"
+test = false

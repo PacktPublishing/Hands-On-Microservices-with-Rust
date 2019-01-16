@@ -107,6 +107,5 @@ fn worker_loop(receiver: Receiver<Action>) -> Result<(), Error> {
             }
         }
     }
-    println!("DONE");
     Ok(())
 }
