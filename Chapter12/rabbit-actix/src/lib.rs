@@ -40,7 +40,7 @@ pub fn ensure_queue(chan: &Channel<TcpStream>, name: &str)
     chan.queue_declare(name, opts, table)
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct QrRequest {
     pub image: Vec<u8>,
 }
@@ -49,7 +49,7 @@ impl Message for QrRequest {
     type Result = ();
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub enum QrResponse {
     Succeed(String),
     Failed(String),

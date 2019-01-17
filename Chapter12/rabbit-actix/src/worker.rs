@@ -11,7 +11,7 @@ use lapin::message::Delivery;
 use log::{debug, warn};
 use queens_rock::Scanner;
 use rabbit_actix::{QrRequest, QrResponse, REQUESTS, RESPONSES};
-use rabbit_actix::queue_actor::{QueueActor, QueueHandler};
+use rabbit_actix::queue_actor::{QueueActor, QueueHandler, TaskId};
 use tokio::net::TcpStream;
 
 /*
@@ -119,7 +119,9 @@ impl QueueHandler for WokerHandler {
     fn outgoing(&self) -> &str {
         RESPONSES
     }
-    fn handle(&self, incoming: Self::Incoming) -> Result<Option<Self::Outgoing>, Error> {
+    fn handle(&self, _: &TaskId, incoming: Self::Incoming)
+        -> Result<Option<Self::Outgoing>, Error>
+    {
         debug!("In: {:?}", incoming);
         let outgoing = self.scan(&incoming.image).into();
         debug!("Out: {:?}", outgoing);

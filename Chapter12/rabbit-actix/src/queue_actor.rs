@@ -19,7 +19,8 @@ pub trait QueueHandler: 'static {
 
     fn incoming(&self) -> &str;
     fn outgoing(&self) -> &str;
-    fn handle(&self, incoming: Self::Incoming) -> Result<Option<Self::Outgoing>, Error>;
+    fn handle(&self, id: &TaskId, incoming: Self::Incoming)
+        -> Result<Option<Self::Outgoing>, Error>;
 }
 
 pub type TaskId = ShortString;
@@ -100,12 +101,12 @@ impl<T: QueueHandler> QueueActor<T> {
         -> Result<Option<(ShortString, T::Outgoing)>, Error>
     {
         debug!("- - - Received!");
+        let corr_id = item.properties.correlation_id()
+            .to_owned()
+            .ok_or_else(|| format_err!("Message has no address for the response"))?;
         let incoming = serde_json::from_slice(&item.data)?;
-        let outgoing = self.handler.handle(incoming)?;
+        let outgoing = self.handler.handle(&corr_id, incoming)?;
         if let Some(outgoing) = outgoing {
-            let corr_id = item.properties.correlation_id()
-                .to_owned()
-                .ok_or_else(|| format_err!("Message has no address for the response"))?;
             Ok(Some((corr_id, outgoing)))
         } else {
             Ok(None)

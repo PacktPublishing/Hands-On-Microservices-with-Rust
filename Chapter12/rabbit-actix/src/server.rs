@@ -33,24 +33,32 @@ struct Record {
 #[derive(Clone)]
 enum Status {
     InProgress,
-    Done,
+    Done(QrResponse),
 }
 
 impl fmt::Display for Status {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let s = {
-            match self {
-                Status::InProgress => "in progress",
-                Status::Done => "done",
-            }
-        };
-        f.write_str(s)
+        match self {
+            Status::InProgress => write!(f, "in progress"),
+            Status::Done(resp) => {
+                match resp {
+                    QrResponse::Succeed(data) => {
+                        write!(f, "done: {}", data)
+                    }
+                    QrResponse::Failed(err) => {
+                        write!(f, "failed: {}", err)
+                    }
+                }
+            },
+        }
     }
 }
 
+type SharedTasks = Arc<Mutex<IndexMap<String, Record>>>;
+
 #[derive(Clone)]
 struct State {
-    tasks: Arc<Mutex<IndexMap<String, Record>>>,
+    tasks: SharedTasks,
     addr: Addr<QueueActor<ServerHandler>>,
 }
 
@@ -157,10 +165,11 @@ fn index(req: HttpRequest<State>)
 fn main() -> Result<(), Error> {
     env_logger::init();
     let mut sys = System::new("rabbit-actix-server");
-    let addr = QueueActor::new(ServerHandler {}, &mut sys)?;
+    let tasks = Arc::new(Mutex::new(IndexMap::new()));
+    let addr = QueueActor::new(ServerHandler { tasks: tasks.clone() }, &mut sys)?;
 
     let state = State {
-        tasks: Arc::new(Mutex::new(IndexMap::new())),
+        tasks: tasks.clone(),
         addr,
     };
     server::new(move || {
@@ -181,6 +190,7 @@ fn main() -> Result<(), Error> {
 }
 
 struct ServerHandler {
+    tasks: SharedTasks,
 }
 
 impl QueueHandler for ServerHandler {
@@ -193,8 +203,13 @@ impl QueueHandler for ServerHandler {
     fn outgoing(&self) -> &str {
         REQUESTS
     }
-    fn handle(&self, incoming: Self::Incoming) -> Result<Option<Self::Outgoing>, Error> {
+    fn handle(&self, id: &TaskId, incoming: Self::Incoming)
+        -> Result<Option<Self::Outgoing>, Error>
+    {
         debug!("RESULT RETURNED! {:?}", incoming);
+        self.tasks.lock().unwrap().get_mut(id).map(move |rec| {
+            rec.status = Status::Done(incoming);
+        });
         Ok(None)
     }
 }
