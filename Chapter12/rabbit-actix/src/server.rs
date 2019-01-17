@@ -1,5 +1,6 @@
 use actix::{Actor, Addr, System};
 use actix_web::{middleware, server, App, Error as WebError, HttpMessage, HttpRequest, HttpResponse};
+use actix_web::dev::Payload;
 use actix_web::error::MultipartError;
 use actix_web::http::{self, header, StatusCode};
 use actix_web::multipart::MultipartItem;
@@ -8,7 +9,6 @@ use chrono::{DateTime, Utc};
 use indexmap::IndexMap;
 use failure::Error;
 use futures::{Future, Stream};
-use futures::future::IntoFuture;
 use lapin::channel::Channel;
 use log::{debug, warn};
 use rabbit_actix::{QrRequest, QrResponse, REQUESTS, RESPONSES};
@@ -55,32 +55,47 @@ struct State {
     addr: Addr<QueueActor<ServerHandler>>,
 }
 
+/*
 fn boxed<I, E, F>(fut: F) -> Box<Future<Item = I, Error = E>>
 where
     F: Future<Item = I, Error = E> + 'static,
 {
     Box::new(fut)
 }
+*/
+
+pub fn handle_multipart_item(
+    item: MultipartItem<Payload>,
+) -> Box<Stream<Item = Vec<u8>, Error = MultipartError>> {
+    match item {
+        MultipartItem::Field(field) => {
+            Box::new(field.concat2().map(|bytes| bytes.to_vec()).into_stream())
+        }
+        MultipartItem::Nested(mp) => Box::new(
+            mp.map(handle_multipart_item).flatten()
+        ),
+    }
+}
 
 fn upload(req: HttpRequest<State>)
     -> impl Future<Item = HttpResponse, Error = WebError>
 {
     req.multipart()
+        .map(handle_multipart_item)
+        .flatten()
         .into_future()
-        .map_err(|(err, _)| err)
-        .and_then(|(opt_item, _)| {
-            if let Some(MultipartItem::Field(field)) = opt_item {
-                debug!("Field: {:?}", field);
-                boxed(field.concat2())
+        .and_then(|(bytes, stream)| {
+            if let Some(bytes) = bytes {
+                Ok(bytes)
             } else {
-                warn!("Unsupported multipart format");
-                boxed(Err(MultipartError::Incomplete).into_future())
+                Err((MultipartError::Incomplete, stream))
             }
         })
-        .from_err()
-        .and_then(move |bytes| {
+        .map_err(|(err, _)| WebError::from(err))
+        .and_then(move |image| {
+            debug!("Image: {:?}", image);
             let request = QrRequest {
-                image: bytes.to_vec(),
+                image,
             };
             req.state().addr.send(SendMessage(request))
                 .from_err()

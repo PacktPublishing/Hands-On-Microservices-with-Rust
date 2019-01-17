@@ -8,7 +8,7 @@ use lapin::consumer::Consumer;
 use lapin::error::Error as LapinError;
 use lapin::message::Delivery;
 use log::{debug, warn};
-use rabbit_actix::{REQUESTS, RESPONSES};
+use rabbit_actix::{QrRequest, QrResponse, REQUESTS, RESPONSES};
 use rabbit_actix::queue_actor::{QueueActor, QueueHandler};
 use tokio::net::TcpStream;
 
@@ -84,8 +84,8 @@ struct WokerHandler {
 }
 
 impl QueueHandler for WokerHandler {
-    type Incoming = String;
-    type Outgoing = String;
+    type Incoming = QrRequest;
+    type Outgoing = QrResponse;
 
     fn incoming(&self) -> &str {
         REQUESTS
@@ -94,8 +94,11 @@ impl QueueHandler for WokerHandler {
         RESPONSES
     }
     fn handle(&self, incoming: Self::Incoming) -> Result<Option<Self::Outgoing>, Error> {
-        debug!("WORKER: {}", incoming);
-        Ok(Some(incoming))
+        debug!("WORKER: {:?}", incoming);
+        let resp = QrResponse {
+            link: "link-data-...".into(),
+        };
+        Ok(Some(resp))
     }
 }
 
