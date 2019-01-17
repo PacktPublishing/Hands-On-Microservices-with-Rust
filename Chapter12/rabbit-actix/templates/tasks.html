@@ -13,9 +13,9 @@
       <li>{{ task.timestamp }}</li>
       <li>{{ task.status }}</li>
   {% endfor %}
-  <form action="/" method="GET">
-    <input type="file" name="pic" accept="image/*">
-    <input type="submit">
+  <form action="/" method="post" enctype="multipart/form-data">
+    <input type="file" name="file"/>
+    <input type="submit" value="Submit"></button>
   </form>
 </body>
 </html>

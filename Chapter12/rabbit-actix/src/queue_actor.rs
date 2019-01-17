@@ -1,4 +1,4 @@
-use actix::{Actor, AsyncContext, Context, Handler, Message, StreamHandler, System};
+use actix::{Actor, AsyncContext, Context, Handler, Message, StreamHandler};
 use actix::fut::wrap_future;
 use failure::{format_err, Error};
 use futures::Future;

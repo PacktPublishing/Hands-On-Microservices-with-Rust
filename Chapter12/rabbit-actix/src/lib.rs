@@ -1,6 +1,6 @@
 pub mod queue_actor;
 
-use actix::SystemRunner;
+use actix::{Message, SystemRunner};
 use failure::Error;
 use futures::Future;
 use lapin::client::{Client, ConnectionOptions};
@@ -8,6 +8,7 @@ use lapin::channel::{Channel, QueueDeclareOptions};
 use lapin::error::Error as LapinError;
 use lapin::queue::Queue;
 use lapin::types::FieldTable;
+use serde_derive::{Deserialize, Serialize};
 use tokio::net::TcpStream;
 
 pub const REQUESTS: &str = "requests";
@@ -37,4 +38,22 @@ pub fn ensure_queue(chan: &Channel<TcpStream>, name: &str)
     };
     let table = FieldTable::new();
     chan.queue_declare(name, opts, table)
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct QrRequest {
+    pub image: Vec<u8>,
+}
+
+impl Message for QrRequest {
+    type Result = ();
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct QrResponse {
+    pub link: String,
+}
+
+impl Message for QrResponse {
+    type Result = ();
 }
