@@ -1,30 +1,53 @@
 use actix::{Actor, Addr, System};
-use actix_web::{http, middleware, server, App, Error as WebError, HttpRequest, HttpResponse};
+use actix_web::{middleware, server, App, Error as WebError, HttpRequest, HttpResponse};
+use actix_web::http::{self, header, StatusCode};
 use askama::Template;
+use chrono::{DateTime, Utc};
 use indexmap::IndexMap;
 use failure::Error;
 use futures::Future;
 use lapin::channel::Channel;
 use log::debug;
 use rabbit_actix::{REQUESTS, RESPONSES};
-use rabbit_actix::queue_actor::{SendMessage, QueueActor, QueueHandler};
+use rabbit_actix::queue_actor::{SendMessage, TaskId, QueueActor, QueueHandler};
+use std::fmt;
 use std::sync::{Arc, Mutex};
 use tokio::net::TcpStream;
 
 #[derive(Template)]
 #[template(path = "tasks.html")]
 struct Tasks {
-    tasks: Vec<String>,
+    tasks: Vec<Record>,
 }
 
+#[derive(Clone)]
+struct Record {
+    task_id: TaskId,
+    timestamp: DateTime<Utc>,
+    status: Status,
+}
+
+#[derive(Clone)]
 enum Status {
     InProgress,
     Done,
 }
 
+impl fmt::Display for Status {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let s = {
+            match self {
+                Status::InProgress => "in progress",
+                Status::Done => "done",
+            }
+        };
+        f.write_str(s)
+    }
+}
+
 #[derive(Clone)]
 struct State {
-    tasks: Arc<Mutex<IndexMap<String, Status>>>, // Add DateTime
+    tasks: Arc<Mutex<IndexMap<String, Record>>>,
     channel: Channel<TcpStream>,
     addr: Addr<QueueActor<ServerHandler>>,
 }
@@ -35,10 +58,18 @@ fn snd_msg(req: HttpRequest<State>)
     req.state().addr.send(SendMessage(format!("value text")))
         .from_err::<WebError>()
         .map(move |task_id| {
+            let record = Record {
+                task_id: task_id.clone(),
+                timestamp: Utc::now(),
+                status: Status::InProgress,
+            };
             req.state().tasks.lock()
                 .unwrap()
-                .insert(task_id, Status::InProgress);
-            HttpResponse::Ok().body(format!("Sent"))
+                .insert(task_id, record);
+            HttpResponse::build_from(&req)
+                .status(StatusCode::FOUND)
+                .header(header::LOCATION, "/tasks")
+                .finish()
         })
 }
 
@@ -47,7 +78,7 @@ fn index(req: HttpRequest<State>)
 {
     let tasks = req.state().tasks.lock()
         .unwrap()
-        .keys()
+        .values()
         .cloned()
         .collect::<Vec<_>>();
         //.join(",");

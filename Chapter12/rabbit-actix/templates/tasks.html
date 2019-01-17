@@ -3,10 +3,19 @@
 <head>
   <meta charset="utf-8" />
   <title></title>
+  <script>
+      setTimeout(function() { location.reload(); }, 5000);
+  </script>
 </head>
 <body>
   {% for task in tasks %}
-  <li>{{ task }}</li>
+      <li>{{ task.task_id }}</li>
+      <li>{{ task.timestamp }}</li>
+      <li>{{ task.status }}</li>
   {% endfor %}
+  <form action="/" method="GET">
+    <input type="file" name="pic" accept="image/*">
+    <input type="submit">
+  </form>
 </body>
 </html>

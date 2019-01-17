@@ -22,7 +22,7 @@ pub trait QueueHandler: 'static {
     fn handle(&self, incoming: Self::Incoming) -> Result<Option<Self::Outgoing>, Error>;
 }
 
-type TaskId = ShortString;
+pub type TaskId = ShortString;
 
 struct AttachStream(Consumer<TcpStream>);
 

@@ -8,7 +8,7 @@ use lapin::consumer::Consumer;
 use lapin::error::Error as LapinError;
 use lapin::message::Delivery;
 use log::{debug, warn};
-use rabbit_actix::{ensure_queue, REQUESTS, RESPONSES};
+use rabbit_actix::{REQUESTS, RESPONSES};
 use rabbit_actix::queue_actor::{QueueActor, QueueHandler};
 use tokio::net::TcpStream;
 
