@@ -34,6 +34,7 @@ pub fn ensure_queue(chan: &Channel<TcpStream>, name: &str)
 {
     let opts = QueueDeclareOptions {
         //durable: true,
+        auto_delete: true,
         ..Default::default()
     };
     let table = FieldTable::new();

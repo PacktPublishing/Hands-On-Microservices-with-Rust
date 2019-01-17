@@ -51,7 +51,6 @@ impl fmt::Display for Status {
 #[derive(Clone)]
 struct State {
     tasks: Arc<Mutex<IndexMap<String, Record>>>,
-    channel: Channel<TcpStream>,
     addr: Addr<QueueActor<ServerHandler>>,
 }
 
@@ -158,13 +157,10 @@ fn index(req: HttpRequest<State>)
 fn main() -> Result<(), Error> {
     env_logger::init();
     let mut sys = System::new("rabbit-actix-server");
-    let channel = rabbit_actix::spawn_client(&mut sys)?;
-    let actor = QueueActor::new(channel.clone(), ServerHandler {});
-    let addr = actor.start();
+    let addr = QueueActor::new(ServerHandler {}, &mut sys)?;
 
     let state = State {
         tasks: Arc::new(Mutex::new(IndexMap::new())),
-        channel,
         addr,
     };
     server::new(move || {
@@ -180,7 +176,7 @@ fn main() -> Result<(), Error> {
     .unwrap()
         .start();
 
-    sys.run();
+    let _ = sys.run();
     Ok(())
 }
 

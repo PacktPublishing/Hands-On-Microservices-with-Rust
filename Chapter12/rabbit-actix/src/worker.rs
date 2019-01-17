@@ -106,10 +106,10 @@ fn main() -> Result<(), Error> {
     env_logger::init();
     let mut sys = System::new("rabbit-actix-worker");
 
-    let channel = rabbit_actix::spawn_client(&mut sys)?;
-    let actor = QueueActor::new(channel, WokerHandler {});
-    let _addr = actor.start();
+    //let channel = rabbit_actix::spawn_client(&mut sys)?;
+    let addr = QueueActor::new(WokerHandler {}, &mut sys)?;
+    //let _addr = actor.start();
 
-    sys.run();
+    let _ = sys.run();
     Ok(())
 }

@@ -1,4 +1,4 @@
-use actix::{Actor, AsyncContext, Context, Handler, Message, StreamHandler};
+use actix::{Actor, Addr, AsyncContext, Context, Handler, Message, StreamHandler, SystemRunner};
 use actix::fut::wrap_future;
 use failure::{format_err, Error};
 use futures::Future;
@@ -42,8 +42,39 @@ pub struct QueueActor<T: QueueHandler> {
 }
 
 impl<T: QueueHandler> QueueActor<T> {
-    pub fn new(channel: Channel<TcpStream>, handler: T) -> Self {
-        Self { channel, handler }
+    pub fn new(handler: T, mut sys: &mut SystemRunner) -> Result<Addr<Self>, Error> {
+        let channel = super::spawn_client(&mut sys)?;
+        let chan = channel.clone();
+        let fut = ensure_queue(&chan, handler.outgoing());
+            //.map(drop)
+            //.map_err(drop);
+        sys.block_on(fut)?;
+        //let addr = ctx.address();
+        let fut = ensure_queue(&chan, handler.incoming())
+            .and_then(move |queue| {
+                let opts = BasicConsumeOptions {
+                    ..Default::default()
+                };
+                let table = FieldTable::new();
+                debug!("Receiving from: {}", queue.name());
+                chan.basic_consume(&queue, "consumer", opts, table)
+            });
+            //.from_err::<Error>();
+            /*
+            .and_then(move |stream| {
+                debug!("Stream!");
+                addr.send(AttachStream(stream))
+                    .from_err::<Error>()
+            })
+            */
+            //.map(drop)
+            //.map_err(drop);
+        let stream = sys.block_on(fut)?;
+        let addr = QueueActor::create(move |ctx| {
+            ctx.add_stream(stream);
+            Self { channel, handler }
+        });
+        Ok(addr)
     }
 }
 
@@ -130,29 +161,5 @@ impl<T: QueueHandler> Actor for QueueActor<T> {
     type Context = Context<Self>;
 
     fn started(&mut self, ctx: &mut Self::Context) {
-        let chan = self.channel.clone();
-        let fut = ensure_queue(&chan, self.handler.outgoing())
-            .map(drop)
-            .map_err(drop);
-        ctx.spawn(wrap_future(fut));
-        let addr = ctx.address();
-        let fut = ensure_queue(&chan, self.handler.incoming())
-            .and_then(move |queue| {
-                let opts = BasicConsumeOptions {
-                    ..Default::default()
-                };
-                let table = FieldTable::new();
-                debug!("Receiving from: {}", queue.name());
-                chan.basic_consume(&queue, "consumer", opts, table)
-            })
-            .from_err::<Error>()
-            .and_then(move |stream| {
-                debug!("Stream!");
-                addr.send(AttachStream(stream))
-                    .from_err::<Error>()
-            })
-            .map(drop)
-            .map_err(drop);
-        ctx.spawn(wrap_future(fut));
     }
 }
