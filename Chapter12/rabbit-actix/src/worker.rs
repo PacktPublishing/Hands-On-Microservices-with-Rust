@@ -1,6 +1,7 @@
 use actix::{Actor, AsyncContext, Context, Handler, Message, StreamHandler, System};
 use actix::fut::wrap_future;
-use failure::Error;
+use image::GenericImageView;
+use failure::{format_err, Error};
 use futures::Future;
 use lapin::types::FieldTable;
 use lapin::channel::{BasicConsumeOptions, BasicProperties, BasicPublishOptions, Channel};
@@ -8,6 +9,7 @@ use lapin::consumer::Consumer;
 use lapin::error::Error as LapinError;
 use lapin::message::Delivery;
 use log::{debug, warn};
+use queens_rock::Scanner;
 use rabbit_actix::{QrRequest, QrResponse, REQUESTS, RESPONSES};
 use rabbit_actix::queue_actor::{QueueActor, QueueHandler};
 use tokio::net::TcpStream;
@@ -83,6 +85,30 @@ impl Actor for WorkerActor {
 struct WokerHandler {
 }
 
+impl WokerHandler {
+    fn scan(&self, data: &[u8]) -> Result<String, Error> {
+        let image = image::load_from_memory(data)?;
+        let luma = image.to_luma().into_vec();
+        let scanner = Scanner::new(
+            luma.as_ref(),
+            image.width() as usize,
+            image.height() as usize,
+            );
+        scanner
+            .scan()
+            .extract(0)
+            .ok_or_else(|| format_err!("can't extract"))
+            .and_then(|code| {
+                code.decode()
+                    .map_err(|_| format_err!("can't decode"))
+            })
+            .and_then(|data| {
+                data.try_string()
+                    .map_err(|_| format_err!("can't convert to a string"))
+            })
+    }
+}
+
 impl QueueHandler for WokerHandler {
     type Incoming = QrRequest;
     type Outgoing = QrResponse;
@@ -94,11 +120,10 @@ impl QueueHandler for WokerHandler {
         RESPONSES
     }
     fn handle(&self, incoming: Self::Incoming) -> Result<Option<Self::Outgoing>, Error> {
-        debug!("WORKER: {:?}", incoming);
-        let resp = QrResponse {
-            link: "link-data-...".into(),
-        };
-        Ok(Some(resp))
+        debug!("In: {:?}", incoming);
+        let outgoing = self.scan(&incoming.image).into();
+        debug!("Out: {:?}", outgoing);
+        Ok(Some(outgoing))
     }
 }
 

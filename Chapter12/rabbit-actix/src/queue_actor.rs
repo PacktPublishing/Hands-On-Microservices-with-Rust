@@ -46,44 +46,22 @@ impl<T: QueueHandler> QueueActor<T> {
         let channel = super::spawn_client(&mut sys)?;
         let chan = channel.clone();
         let fut = ensure_queue(&chan, handler.outgoing());
-            //.map(drop)
-            //.map_err(drop);
         sys.block_on(fut)?;
-        //let addr = ctx.address();
         let fut = ensure_queue(&chan, handler.incoming())
             .and_then(move |queue| {
                 let opts = BasicConsumeOptions {
                     ..Default::default()
                 };
                 let table = FieldTable::new();
-                debug!("Receiving from: {}", queue.name());
-                chan.basic_consume(&queue, "consumer", opts, table)
+                let name = format!("{}-consumer", queue.name());
+                chan.basic_consume(&queue, &name, opts, table)
             });
-            //.from_err::<Error>();
-            /*
-            .and_then(move |stream| {
-                debug!("Stream!");
-                addr.send(AttachStream(stream))
-                    .from_err::<Error>()
-            })
-            */
-            //.map(drop)
-            //.map_err(drop);
         let stream = sys.block_on(fut)?;
         let addr = QueueActor::create(move |ctx| {
             ctx.add_stream(stream);
             Self { channel, handler }
         });
         Ok(addr)
-    }
-}
-
-impl<T: QueueHandler> Handler<AttachStream> for QueueActor<T> {
-    type Result = ();
-
-    fn handle(&mut self, msg: AttachStream, ctx: &mut Self::Context) -> Self::Result {
-        debug!("subscribed");
-        ctx.add_stream(msg.0);
     }
 }
 
@@ -122,7 +100,7 @@ impl<T: QueueHandler> QueueActor<T> {
         -> Result<Option<(ShortString, T::Outgoing)>, Error>
     {
         debug!("- - - Received!");
-        let incoming = rmp_serde::decode::from_slice(&item.data)?;
+        let incoming = serde_json::from_slice(&item.data)?;
         let outgoing = self.handler.handle(incoming)?;
         if let Some(outgoing) = outgoing {
             let corr_id = item.properties.correlation_id()
@@ -136,12 +114,11 @@ impl<T: QueueHandler> QueueActor<T> {
 
     fn send_message(&self, corr_id: ShortString, outgoing: T::Outgoing, ctx: &mut Context<Self>) {
         debug!("- - - Sending!");
-        let data = rmp_serde::encode::to_vec(&outgoing);
+        let data = serde_json::to_vec(&outgoing);
         match data {
             Ok(data) => {
                 let opts = BasicPublishOptions::default();
                 let props = BasicProperties::default()
-                    //.with_delivery_mode(2)
                     .with_correlation_id(corr_id);
                 debug!("Sending to: {}", self.handler.outgoing());
                 let fut = self.channel

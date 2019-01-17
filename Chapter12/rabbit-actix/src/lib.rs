@@ -33,7 +33,6 @@ pub fn ensure_queue(chan: &Channel<TcpStream>, name: &str)
     -> impl Future<Item = Queue, Error = LapinError>
 {
     let opts = QueueDeclareOptions {
-        //durable: true,
         auto_delete: true,
         ..Default::default()
     };
@@ -51,8 +50,18 @@ impl Message for QrRequest {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-pub struct QrResponse {
-    pub link: String,
+pub enum QrResponse {
+    Succeed(String),
+    Failed(String),
+}
+
+impl From<Result<String, Error>> for QrResponse {
+    fn from(res: Result<String, Error>) -> Self {
+        match res {
+            Ok(data) => QrResponse::Succeed(data),
+            Err(err) => QrResponse::Failed(err.to_string()),
+        }
+    }
 }
 
 impl Message for QrResponse {
