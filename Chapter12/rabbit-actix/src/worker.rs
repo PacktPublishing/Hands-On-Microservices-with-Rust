@@ -1,18 +1,10 @@
-use actix::fut::wrap_future;
-use actix::{Actor, AsyncContext, Context, Handler, Message, StreamHandler, System};
+use actix::System;
 use failure::{format_err, Error};
-use futures::Future;
 use image::GenericImageView;
-use lapin::channel::{BasicConsumeOptions, BasicProperties, BasicPublishOptions, Channel};
-use lapin::consumer::Consumer;
-use lapin::error::Error as LapinError;
-use lapin::message::Delivery;
-use lapin::types::FieldTable;
-use log::{debug, warn};
+use log::debug;
 use queens_rock::Scanner;
 use rabbit_actix::queue_actor::{QueueActor, QueueHandler, TaskId};
 use rabbit_actix::{QrRequest, QrResponse, REQUESTS, RESPONSES};
-use tokio::net::TcpStream;
 
 struct WokerHandler {}
 
@@ -62,7 +54,7 @@ impl QueueHandler for WokerHandler {
 fn main() -> Result<(), Error> {
     env_logger::init();
     let mut sys = System::new("rabbit-actix-worker");
-    let addr = QueueActor::new(WokerHandler {}, &mut sys)?;
+    let _ = QueueActor::new(WokerHandler {}, &mut sys)?;
     let _ = sys.run();
     Ok(())
 }
