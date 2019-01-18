@@ -4,7 +4,6 @@ use actix::{Actor, Addr, AsyncContext, Context, Handler, Message, StreamHandler,
 use failure::{format_err, Error};
 use futures::Future;
 use lapin::channel::{BasicConsumeOptions, BasicProperties, BasicPublishOptions, Channel};
-use lapin::consumer::Consumer;
 use lapin::error::Error as LapinError;
 use lapin::message::Delivery;
 use lapin::types::{FieldTable, ShortString};
@@ -27,12 +26,6 @@ pub trait QueueHandler: 'static {
 }
 
 pub type TaskId = ShortString;
-
-struct AttachStream(Consumer<TcpStream>);
-
-impl Message for AttachStream {
-    type Result = ();
-}
 
 pub struct SendMessage<T>(pub T);
 
@@ -103,7 +96,7 @@ impl<T: QueueHandler> QueueActor<T> {
     fn process_message(
         &self,
         item: Delivery,
-        ctx: &mut Context<Self>,
+        _: &mut Context<Self>,
     ) -> Result<Option<(ShortString, T::Outgoing)>, Error> {
         debug!("- - - Received!");
         let corr_id = item
@@ -145,5 +138,5 @@ impl<T: QueueHandler> QueueActor<T> {
 impl<T: QueueHandler> Actor for QueueActor<T> {
     type Context = Context<Self>;
 
-    fn started(&mut self, ctx: &mut Self::Context) {}
+    fn started(&mut self, _: &mut Self::Context) {}
 }

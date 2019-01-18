@@ -1,4 +1,4 @@
-use actix::{Actor, Addr, System};
+use actix::{Addr, System};
 use actix_web::dev::Payload;
 use actix_web::error::MultipartError;
 use actix_web::http::{self, header, StatusCode};
@@ -9,15 +9,13 @@ use actix_web::{
 use askama::Template;
 use chrono::{DateTime, Utc};
 use failure::Error;
-use futures::{Future, Stream};
+use futures::{future, Future, Stream};
 use indexmap::IndexMap;
-use lapin::channel::Channel;
-use log::{debug, warn};
+use log::debug;
 use rabbit_actix::queue_actor::{QueueActor, QueueHandler, SendMessage, TaskId};
 use rabbit_actix::{QrRequest, QrResponse, REQUESTS, RESPONSES};
 use std::fmt;
 use std::sync::{Arc, Mutex};
-use tokio::net::TcpStream;
 
 #[derive(Template)]
 #[template(path = "tasks.html")]
@@ -58,15 +56,6 @@ struct State {
     addr: Addr<QueueActor<ServerHandler>>,
 }
 
-/*
-fn boxed<I, E, F>(fut: F) -> Box<Future<Item = I, Error = E>>
-where
-    F: Future<Item = I, Error = E> + 'static,
-{
-    Box::new(fut)
-}
-*/
-
 pub fn handle_multipart_item(
     item: MultipartItem<Payload>,
 ) -> Box<Stream<Item = Vec<u8>, Error = MultipartError>> {
@@ -78,7 +67,7 @@ pub fn handle_multipart_item(
     }
 }
 
-fn upload(req: HttpRequest<State>) -> impl Future<Item = HttpResponse, Error = WebError> {
+fn upload_handler(req: HttpRequest<State>) -> impl Future<Item = HttpResponse, Error = WebError> {
     req.multipart()
         .map(handle_multipart_item)
         .flatten()
@@ -116,41 +105,21 @@ fn upload(req: HttpRequest<State>) -> impl Future<Item = HttpResponse, Error = W
         })
 }
 
-/*
-fn snd_msg(req: HttpRequest<State>)
-    -> impl Future<Item = HttpResponse, Error = WebError>
-{
-    req.state().addr.send(SendMessage(format!("value text")))
-        .from_err::<WebError>()
-        .map(move |task_id| {
-            let record = Record {
-                task_id: task_id.clone(),
-                timestamp: Utc::now(),
-                status: Status::InProgress,
-            };
-            req.state().tasks.lock()
-                .unwrap()
-                .insert(task_id, record);
-            HttpResponse::build_from(&req)
-                .status(StatusCode::FOUND)
-                .header(header::LOCATION, "/tasks")
-                .finish()
-        })
-}
-*/
-
-fn index(req: HttpRequest<State>) -> impl Future<Item = HttpResponse, Error = WebError> {
-    let tasks = req
+fn tasks_handler(req: HttpRequest<State>) -> impl Future<Item = HttpResponse, Error = WebError> {
+    let tasks: Vec<_> = req
         .state()
         .tasks
         .lock()
         .unwrap()
         .values()
         .cloned()
-        .collect::<Vec<_>>();
-    //.join(",");
+        .collect();
     let tmpl = Tasks { tasks };
-    futures::future::ok(HttpResponse::Ok().body(tmpl.render().unwrap()))
+    future::ok(HttpResponse::Ok().body(tmpl.render().unwrap()))
+}
+
+fn index_handler(_: &HttpRequest<State>) -> HttpResponse {
+    HttpResponse::Ok().body("QR Parsing Microservice")
 }
 
 fn main() -> Result<(), Error> {
@@ -171,12 +140,12 @@ fn main() -> Result<(), Error> {
     server::new(move || {
         App::with_state(state.clone())
             .middleware(middleware::Logger::default())
-            //.resource("/", |r| r.f(index))
-            .resource("/", |r| {
+            .resource("/", |r| r.f(index_handler))
+            .resource("/task", |r| {
                 //r.method(http::Method::GET).with_async(snd_msg);
-                r.method(http::Method::POST).with_async(upload);
+                r.method(http::Method::POST).with_async(upload_handler);
             })
-            .resource("/tasks", |r| r.method(http::Method::GET).with_async(index))
+            .resource("/tasks", |r| r.method(http::Method::GET).with_async(tasks_handler))
     })
     .bind("127.0.0.1:8080")
     .unwrap()
@@ -205,7 +174,7 @@ impl QueueHandler for ServerHandler {
         id: &TaskId,
         incoming: Self::Incoming,
     ) -> Result<Option<Self::Outgoing>, Error> {
-        debug!("RESULT RETURNED! {:?}", incoming);
+        debug!("Result returned: {:?}", incoming);
         self.tasks.lock().unwrap().get_mut(id).map(move |rec| {
             rec.status = Status::Done(incoming);
         });
