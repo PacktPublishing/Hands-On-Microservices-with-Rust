@@ -1,18 +1,20 @@
 use actix::{Actor, Addr, System};
-use actix_web::{middleware, server, App, Error as WebError, HttpMessage, HttpRequest, HttpResponse};
 use actix_web::dev::Payload;
 use actix_web::error::MultipartError;
 use actix_web::http::{self, header, StatusCode};
 use actix_web::multipart::MultipartItem;
+use actix_web::{
+    middleware, server, App, Error as WebError, HttpMessage, HttpRequest, HttpResponse,
+};
 use askama::Template;
 use chrono::{DateTime, Utc};
-use indexmap::IndexMap;
 use failure::Error;
 use futures::{Future, Stream};
+use indexmap::IndexMap;
 use lapin::channel::Channel;
 use log::{debug, warn};
+use rabbit_actix::queue_actor::{QueueActor, QueueHandler, SendMessage, TaskId};
 use rabbit_actix::{QrRequest, QrResponse, REQUESTS, RESPONSES};
-use rabbit_actix::queue_actor::{SendMessage, TaskId, QueueActor, QueueHandler};
 use std::fmt;
 use std::sync::{Arc, Mutex};
 use tokio::net::TcpStream;
@@ -40,15 +42,9 @@ impl fmt::Display for Status {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Status::InProgress => write!(f, "in progress"),
-            Status::Done(resp) => {
-                match resp {
-                    QrResponse::Succeed(data) => {
-                        write!(f, "done: {}", data)
-                    }
-                    QrResponse::Failed(err) => {
-                        write!(f, "failed: {}", err)
-                    }
-                }
+            Status::Done(resp) => match resp {
+                QrResponse::Succeed(data) => write!(f, "done: {}", data),
+                QrResponse::Failed(err) => write!(f, "failed: {}", err),
             },
         }
     }
@@ -78,15 +74,11 @@ pub fn handle_multipart_item(
         MultipartItem::Field(field) => {
             Box::new(field.concat2().map(|bytes| bytes.to_vec()).into_stream())
         }
-        MultipartItem::Nested(mp) => Box::new(
-            mp.map(handle_multipart_item).flatten()
-        ),
+        MultipartItem::Nested(mp) => Box::new(mp.map(handle_multipart_item).flatten()),
     }
 }
 
-fn upload(req: HttpRequest<State>)
-    -> impl Future<Item = HttpResponse, Error = WebError>
-{
+fn upload(req: HttpRequest<State>) -> impl Future<Item = HttpResponse, Error = WebError> {
     req.multipart()
         .map(handle_multipart_item)
         .flatten()
@@ -101,10 +93,10 @@ fn upload(req: HttpRequest<State>)
         .map_err(|(err, _)| WebError::from(err))
         .and_then(move |image| {
             debug!("Image: {:?}", image);
-            let request = QrRequest {
-                image,
-            };
-            req.state().addr.send(SendMessage(request))
+            let request = QrRequest { image };
+            req.state()
+                .addr
+                .send(SendMessage(request))
                 .from_err()
                 .map(move |task_id| {
                     let record = Record {
@@ -112,9 +104,7 @@ fn upload(req: HttpRequest<State>)
                         timestamp: Utc::now(),
                         status: Status::InProgress,
                     };
-                    req.state().tasks.lock()
-                        .unwrap()
-                        .insert(task_id, record);
+                    req.state().tasks.lock().unwrap().insert(task_id, record);
                     req
                 })
         })
@@ -149,15 +139,16 @@ fn snd_msg(req: HttpRequest<State>)
 }
 */
 
-fn index(req: HttpRequest<State>)
-    -> impl Future<Item = HttpResponse, Error = WebError>
-{
-    let tasks = req.state().tasks.lock()
+fn index(req: HttpRequest<State>) -> impl Future<Item = HttpResponse, Error = WebError> {
+    let tasks = req
+        .state()
+        .tasks
+        .lock()
         .unwrap()
         .values()
         .cloned()
         .collect::<Vec<_>>();
-        //.join(",");
+    //.join(",");
     let tmpl = Tasks { tasks };
     futures::future::ok(HttpResponse::Ok().body(tmpl.render().unwrap()))
 }
@@ -166,7 +157,12 @@ fn main() -> Result<(), Error> {
     env_logger::init();
     let mut sys = System::new("rabbit-actix-server");
     let tasks = Arc::new(Mutex::new(IndexMap::new()));
-    let addr = QueueActor::new(ServerHandler { tasks: tasks.clone() }, &mut sys)?;
+    let addr = QueueActor::new(
+        ServerHandler {
+            tasks: tasks.clone(),
+        },
+        &mut sys,
+    )?;
 
     let state = State {
         tasks: tasks.clone(),
@@ -181,9 +177,10 @@ fn main() -> Result<(), Error> {
                 r.method(http::Method::POST).with_async(upload);
             })
             .resource("/tasks", |r| r.method(http::Method::GET).with_async(index))
-    }).bind("127.0.0.1:8080")
+    })
+    .bind("127.0.0.1:8080")
     .unwrap()
-        .start();
+    .start();
 
     let _ = sys.run();
     Ok(())
@@ -203,9 +200,11 @@ impl QueueHandler for ServerHandler {
     fn outgoing(&self) -> &str {
         REQUESTS
     }
-    fn handle(&self, id: &TaskId, incoming: Self::Incoming)
-        -> Result<Option<Self::Outgoing>, Error>
-    {
+    fn handle(
+        &self,
+        id: &TaskId,
+        incoming: Self::Incoming,
+    ) -> Result<Option<Self::Outgoing>, Error> {
         debug!("RESULT RETURNED! {:?}", incoming);
         self.tasks.lock().unwrap().get_mut(id).map(move |rec| {
             rec.status = Status::Done(incoming);
@@ -213,4 +212,3 @@ impl QueueHandler for ServerHandler {
         Ok(None)
     }
 }
-

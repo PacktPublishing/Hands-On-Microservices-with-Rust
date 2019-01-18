@@ -1,17 +1,17 @@
-use actix::{Actor, AsyncContext, Context, Handler, Message, StreamHandler, System};
 use actix::fut::wrap_future;
-use image::GenericImageView;
+use actix::{Actor, AsyncContext, Context, Handler, Message, StreamHandler, System};
 use failure::{format_err, Error};
 use futures::Future;
-use lapin::types::FieldTable;
+use image::GenericImageView;
 use lapin::channel::{BasicConsumeOptions, BasicProperties, BasicPublishOptions, Channel};
 use lapin::consumer::Consumer;
 use lapin::error::Error as LapinError;
 use lapin::message::Delivery;
+use lapin::types::FieldTable;
 use log::{debug, warn};
 use queens_rock::Scanner;
-use rabbit_actix::{QrRequest, QrResponse, REQUESTS, RESPONSES};
 use rabbit_actix::queue_actor::{QueueActor, QueueHandler, TaskId};
+use rabbit_actix::{QrRequest, QrResponse, REQUESTS, RESPONSES};
 use tokio::net::TcpStream;
 
 /*
@@ -82,8 +82,7 @@ impl Actor for WorkerActor {
 }
 */
 
-struct WokerHandler {
-}
+struct WokerHandler {}
 
 impl WokerHandler {
     fn scan(&self, data: &[u8]) -> Result<String, Error> {
@@ -93,15 +92,12 @@ impl WokerHandler {
             luma.as_ref(),
             image.width() as usize,
             image.height() as usize,
-            );
+        );
         scanner
             .scan()
             .extract(0)
             .ok_or_else(|| format_err!("can't extract"))
-            .and_then(|code| {
-                code.decode()
-                    .map_err(|_| format_err!("can't decode"))
-            })
+            .and_then(|code| code.decode().map_err(|_| format_err!("can't decode")))
             .and_then(|data| {
                 data.try_string()
                     .map_err(|_| format_err!("can't convert to a string"))
@@ -119,9 +115,11 @@ impl QueueHandler for WokerHandler {
     fn outgoing(&self) -> &str {
         RESPONSES
     }
-    fn handle(&self, _: &TaskId, incoming: Self::Incoming)
-        -> Result<Option<Self::Outgoing>, Error>
-    {
+    fn handle(
+        &self,
+        _: &TaskId,
+        incoming: Self::Incoming,
+    ) -> Result<Option<Self::Outgoing>, Error> {
         debug!("In: {:?}", incoming);
         let outgoing = self.scan(&incoming.image).into();
         debug!("Out: {:?}", outgoing);

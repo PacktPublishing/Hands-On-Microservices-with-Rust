@@ -3,8 +3,8 @@ pub mod queue_actor;
 use actix::{Message, SystemRunner};
 use failure::Error;
 use futures::Future;
-use lapin::client::{Client, ConnectionOptions};
 use lapin::channel::{Channel, QueueDeclareOptions};
+use lapin::client::{Client, ConnectionOptions};
 use lapin::error::Error as LapinError;
 use lapin::queue::Queue;
 use lapin::types::FieldTable;
@@ -20,8 +20,7 @@ pub fn spawn_client(sys: &mut SystemRunner) -> Result<Channel<TcpStream>, Error>
         .map_err(Error::from)
         .and_then(|stream| {
             let options = ConnectionOptions::default();
-            Client::connect(stream, options)
-                .from_err::<Error>()
+            Client::connect(stream, options).from_err::<Error>()
         });
     let (client, heartbeat) = sys.block_on(fut)?;
     actix::spawn(heartbeat.map_err(drop));
@@ -29,9 +28,10 @@ pub fn spawn_client(sys: &mut SystemRunner) -> Result<Channel<TcpStream>, Error>
     Ok(channel)
 }
 
-pub fn ensure_queue(chan: &Channel<TcpStream>, name: &str)
-    -> impl Future<Item = Queue, Error = LapinError>
-{
+pub fn ensure_queue(
+    chan: &Channel<TcpStream>,
+    name: &str,
+) -> impl Future<Item = Queue, Error = LapinError> {
     let opts = QueueDeclareOptions {
         auto_delete: true,
         ..Default::default()
