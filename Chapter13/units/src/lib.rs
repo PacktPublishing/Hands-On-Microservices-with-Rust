@@ -1,4 +1,3 @@
-use actix::{Addr};
 use actix_web::{
     client, middleware, server, fs, App, Error, Form, HttpMessage,
     HttpRequest, HttpResponse, FutureResponse, Result,
@@ -37,7 +36,6 @@ where
     T: Serialize,
     O: for <'de> Deserialize<'de> + 'static,
 {
-    println!("URL: {}", url);
     client::ClientRequest::post(url)
         .form(params)
         .into_future()
@@ -68,7 +66,7 @@ pub struct UserForm {
     password: String,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 pub struct UserId {
     id: String,
 }
@@ -187,7 +185,7 @@ fn start(links: LinksMap) {
         links,
     };
 
-    let server = server::new(move || {
+    server::new(move || {
         App::with_state(state.clone())
             .middleware(middleware::Logger::default())
             .middleware(IdentityService::new(
@@ -218,12 +216,11 @@ fn start(links: LinksMap) {
 
 #[cfg(test)]
 mod tests {
-    use crate::{start, LinksMap, UserForm};
+    use crate::{start, Comment, LinksMap, UserForm, UserId};
     use lazy_static::lazy_static;
-    use mockito::mock;
+    use mockito::{mock, Mock};
     use reqwest::Client;
     use serde::{Deserialize, Serialize};
-    use std::mem;
     use std::sync::Mutex;
     use std::time::Duration;
     use std::thread;
@@ -240,32 +237,32 @@ mod tests {
         format!("http://127.0.0.1:8080/api{}", path)
     }
 
+    fn add_mock<T>(method: &str, path: &str, result: T) -> Mock
+    where
+        T: Serialize,
+    {
+        mock(method, path)
+            .with_status(200)
+            .with_header("Content-Type", "application/json")
+            .with_body(serde_json::to_string(&result).unwrap())
+            .create()
+    }
+
     fn setup() {
         let mut started = STARTED.lock().unwrap();
         if !*started {
             thread::spawn(|| {
                 // Mocks have to be initialized from the same thread
                 let url = mockito::server_url();
-                let _signup = mock("POST", "/signup")
-                    .with_status(200)
-                    .with_header("Content-Type", "application/json")
-                    .with_body("null")
-                    .create();
-                let _signin = mock("POST", "/signin")
-                    .with_status(200)
-                    .with_header("Content-Type", "application/json")
-                    .with_body(r#"{"id": "user-id"}"#)
-                    .create();
-                let _new_comment = mock("POST", "/new_comment")
-                    .with_status(200)
-                    .with_header("Content-Type", "application/json")
-                    .with_body("null")
-                    .create();
-                let _comment = mock("GET", "/comments")
-                    .with_status(200)
-                    .with_header("Content-Type", "application/json")
-                    .with_body(r#"[]"#)
-                    .create();
+                let _signup = add_mock("POST", "/signup", ());
+                let _signin = add_mock("POST", "/signin", UserId { id: "user-id".into() });
+                let _new_comment = add_mock("POST", "/new_comment", ());
+                let comment = Comment {
+                    id: None,
+                    text: "comment".into(),
+                    uid: "user-id".into(),
+                };
+                let _comments = add_mock("GET", "/comments", vec![comment]);
                 let links = LinksMap {
                     signup: mock_url(&url, "/signup"),
                     signin: mock_url(&url, "/signin"),
@@ -281,18 +278,29 @@ mod tests {
 
     fn test_post<T>(path: &str, data: &T)
     where
-        //T: for <'de> Deserialize<'de>,
         T: Serialize,
     {
         setup();
         let client =  Client::new();
-        let mut resp = client.post(&test_url(path))
+        let resp = client.post(&test_url(path))
             .form(data)
             .send()
             .unwrap();
         let status = resp.status();
-        println!("Response {:?}: {}", status, resp.text().unwrap());
         assert!(status.is_success());
+    }
+
+    fn test_get<T>(path: &str) -> T
+    where
+        T: for <'de> Deserialize<'de>,
+    {
+        let client =  Client::new();
+        let data = client.get(&test_url(path))
+            .send()
+            .unwrap()
+            .text()
+            .unwrap();
+        serde_json::from_str(&data).unwrap()
     }
 
     #[test]
@@ -315,9 +323,6 @@ mod tests {
 
     #[test]
     fn test_list_with_client() {
-        let _m = mock("GET", "/list")
-            .with_status(200)
-            .with_header("Content-Type", "application/json")
-            .create();
+        let _: Vec<Comment> = test_get("/comments");
     }
 }
