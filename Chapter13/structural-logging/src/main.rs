@@ -18,10 +18,10 @@ fn main() {
     let file_drain = LevelFilter::new(drain, Level::Error);
 
     let decorator = PlainDecorator::new(std::io::stderr());
-    let drain = CompactFormat::new(decorator).build().fuse();
-    let err_drain = Async::new(drain).build().fuse();
+    let err_drain = CompactFormat::new(decorator).build().fuse();
 
-    let drain = Duplicate::new(file_drain, err_drain).fuse();
+    let drain_pair = Duplicate::new(file_drain, err_drain).fuse();
+    let drain = Async::new(drain_pair).build().fuse();
 
     let log = slog::Logger::root(drain, slog::o!(
         "version" => env!("CARGO_PKG_VERSION"),
