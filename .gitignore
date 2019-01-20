@@ -3,3 +3,4 @@ Cargo.lock
 **/*.rs.bk
 files
 *.db
+*.log
