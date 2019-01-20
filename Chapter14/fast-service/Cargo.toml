@@ -1,0 +1,23 @@
+[package]
+name = "fast-service"
+version = "0.1.0"
+authors = ["Denis Kolodin <deniskolodin@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+actix = "0.7"
+actix-web = "0.7"
+askama = "0.6"
+chrono = "0.4"
+env_logger = "0.5"
+futures = "0.1"
+
+[build-dependencies]
+askama = "0.6"
+
+[features]
+default = []
+cache = []
+rwlock = []
+borrow = []
+fast = ["cache", "rwlock", "borrow"]
