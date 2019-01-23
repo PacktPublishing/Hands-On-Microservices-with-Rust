@@ -1,0 +1,22 @@
+version: '3.1'
+services:
+    git-server:
+        image: gogs/gogs
+        ports:
+            - '10022:22'
+            - '10080:3000'
+        volumes:
+            - ./gogs:/data
+    teamcity:
+        image: jetbrains/teamcity-server
+        ports:
+            - '8111:8111'
+        volumes:
+            - ./teamcity/datadir:/data/teamcity_server/datadir
+            - ./teamcity/logs:/opt/teamcity/logs
+    agent:
+        build: ./images/rust-slave
+        environment:
+            - SERVER_URL=http://teamcity:8111
+        volumes:
+            - ./teamcity/agent:/data/teamcity_agent/conf
