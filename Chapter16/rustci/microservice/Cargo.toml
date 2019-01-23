@@ -1,0 +1,10 @@
+[package]
+name = "microservice"
+version = "0.1.0"
+authors = ["Denis Kolodin <deniskolodin@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+env_logger = "0.5"
+actix = "0.7"
+actix-web = "0.7"

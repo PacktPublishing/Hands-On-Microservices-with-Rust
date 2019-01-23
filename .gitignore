@@ -5,3 +5,5 @@ files
 *.db
 *.log
 out.*
+gogs
+teamcity
