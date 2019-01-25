@@ -12,7 +12,7 @@ use uuid::Uuid;
 
 fn main() -> Result<(), Box<dyn Error>> {
     simple_logger::init_with_level(log::Level::Debug)?;
-    debug!("TEST");
+    debug!("Starting lambda with Rust...");
     lambda!(handler);
     Ok(())
 }
