@@ -77,12 +77,12 @@ resources:
     RustSlsDynamoDBTable:
       Type: AWS::DynamoDB::Table
       Properties:
-        TableName: Quotes
+        TableName: Rides
         AttributeDefinitions:
-          - AttributeName: QuoteId
+          - AttributeName: RideId
             AttributeType: S
         KeySchema:
-          - AttributeName: QuoteId
+          - AttributeName: RideId
             KeyType: HASH
         ProvisionedThroughput:
           ReadCapacityUnits: 1
