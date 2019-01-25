@@ -1,0 +1,17 @@
+[package]
+name = "minimal-lambda"
+version = "0.1.0"
+authors = ["Denis Kolodin <deniskolodin@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+lambda_runtime = { git = "https://github.com/awslabs/aws-lambda-rust-runtime" }
+log = "0.4"
+rand = "0.5"
+serde = "1.0"
+serde_derive = "1.0"
+simple_logger = "1.0"
+
+[[bin]]
+name = "bootstrap"
+path = "src/main.rs"
