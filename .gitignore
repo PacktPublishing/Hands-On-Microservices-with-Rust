@@ -7,3 +7,5 @@ files
 out.*
 gogs
 teamcity
+*.zip
+Chapter17/serverless/assets
