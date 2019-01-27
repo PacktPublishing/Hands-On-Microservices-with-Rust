@@ -1,12 +1,3 @@
-extern crate clap;
-extern crate csv;
-extern crate failure;
-extern crate postgres;
-extern crate r2d2;
-extern crate r2d2_postgres;
-extern crate rayon;
-extern crate serde_derive;
-
 use clap::{
     crate_authors, crate_description, crate_name, crate_version, App, AppSettings, Arg, SubCommand,
 };
@@ -49,7 +40,7 @@ struct User {
     email: String,
 }
 
-const CMD_CRATE: &str = "create";
+const CMD_CREATE: &str = "create";
 const CMD_ADD: &str = "add";
 const CMD_LIST: &str = "list";
 const CMD_IMPORT: &str = "import";
@@ -69,7 +60,7 @@ fn main() -> Result<(), failure::Error> {
             .help("Sets an address of db connection")
             .takes_value(true),
             )
-        .subcommand(SubCommand::with_name(CMD_CRATE).about("create users table"))
+        .subcommand(SubCommand::with_name(CMD_CREATE).about("create users table"))
         .subcommand(SubCommand::with_name(CMD_ADD).about("add user to the table")
                     .arg(Arg::with_name("NAME")
                          .help("Sets the name of a user")
@@ -90,7 +81,7 @@ fn main() -> Result<(), failure::Error> {
     let conn = pool.get()?;
 
     match matches.subcommand() {
-        (CMD_CRATE, _) => {
+        (CMD_CREATE, _) => {
             create_table(&conn)?;
         }
         (CMD_ADD, Some(matches)) => {
