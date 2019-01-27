@@ -1,7 +1,3 @@
-extern crate slab;
-extern crate futures;
-extern crate hyper;
-
 use std::fmt;
 use std::sync::{Arc, Mutex};
 use slab::Slab;

@@ -1,5 +1,3 @@
-extern crate hyper;
-
 use hyper::{Body, Response, Server};
 use hyper::rt::Future;
 use hyper::service::service_fn_ok;

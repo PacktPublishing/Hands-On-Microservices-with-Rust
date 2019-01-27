@@ -1,24 +1,14 @@
-#[macro_use]
-extern crate log;
-extern crate env_logger as logger;
-extern crate dotenv;
-#[macro_use]
-extern crate clap;
-#[macro_use]
-extern crate serde_derive;
-extern crate toml;
-extern crate hyper;
-extern crate rand;
-
+use clap::{crate_authors, crate_name, crate_version, Arg, App};
+use dotenv::dotenv;
+use hyper::{Body, Response, Server};
+use hyper::rt::Future;
+use hyper::service::service_fn_ok;
+use log::{debug, info, trace, warn};
+use serde_derive::Deserialize;
 use std::env;
 use std::io::{self, Read};
 use std::fs::File;
 use std::net::SocketAddr;
-use dotenv::dotenv;
-use clap::{Arg, App};
-use hyper::{Body, Response, Server};
-use hyper::rt::Future;
-use hyper::service::service_fn_ok;
 
 #[derive(Deserialize)]
 struct Config {
@@ -27,7 +17,7 @@ struct Config {
 
 fn main() {
     dotenv().ok();
-    logger::init();
+    env_logger::init();
     let matches = App::new(crate_name!())
         .version(crate_version!())
         .author(crate_authors!())

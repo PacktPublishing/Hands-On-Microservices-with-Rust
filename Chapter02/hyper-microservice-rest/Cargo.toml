@@ -2,6 +2,7 @@
 name = "hyper-microservice-rest"
 version = "0.1.0"
 authors = ["Denis Kolodin <deniskolodin@gmail.com>"]
+edition = "2018"
 
 [dependencies]
 slab = "0.4"

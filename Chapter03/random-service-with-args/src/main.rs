@@ -1,22 +1,14 @@
-#[macro_use]
-extern crate log;
-extern crate env_logger as logger;
-extern crate dotenv;
-#[macro_use]
-extern crate clap;
-extern crate hyper;
-extern crate rand;
-
-use std::env;
+use clap::{crate_authors, crate_name, crate_version, Arg, App};
 use dotenv::dotenv;
-use clap::{Arg, App};
 use hyper::{Body, Response, Server};
 use hyper::rt::Future;
 use hyper::service::service_fn_ok;
+use log::{debug, info, trace};
+use std::env;
 
 fn main() {
     dotenv().ok();
-    logger::init();
+    env_logger::init();
     let matches = App::new(crate_name!())
         .version(crate_version!())
         .author(crate_authors!())

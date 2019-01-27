@@ -1,6 +1,3 @@
-extern crate futures;
-extern crate hyper;
-
 use futures::{future, Future};
 use hyper::{Body, Error, Method, Request, Response, Server, StatusCode};
 use hyper::service::service_fn;
