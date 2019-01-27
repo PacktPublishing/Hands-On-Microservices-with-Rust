@@ -1,12 +1,7 @@
 #![feature(custom_attribute)]
 
-extern crate chrono;
-extern crate clap;
 #[macro_use]
 extern crate diesel;
-extern crate failure;
-#[macro_use]
-extern crate serde_derive;
 
 mod models;
 mod schema;

@@ -1,5 +1,6 @@
 use chrono::NaiveDateTime;
 use crate::schema::{users, channels, memberships, messages};
+use serde_derive::{Deserialize, Serialize};
 
 pub type Id = i32;
 
