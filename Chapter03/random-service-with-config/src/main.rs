@@ -1,4 +1,4 @@
-use clap::{crate_authors, crate_name, crate_version, Arg, App};
+use clap::{crate_authors, crate_description, crate_name, crate_version, Arg, App};
 use dotenv::dotenv;
 use hyper::{Body, Response, Server};
 use hyper::rt::Future;
@@ -21,7 +21,7 @@ fn main() {
     let matches = App::new(crate_name!())
         .version(crate_version!())
         .author(crate_authors!())
-        .about("Rust Microservice")
+        .about(crate_description!())
         .arg(Arg::with_name("config")
              .short("c")
              .long("config")

@@ -1,6 +1,3 @@
-extern crate clap;
-extern crate postgres;
-
 use clap::{
     crate_authors, crate_description, crate_name, crate_version, App, AppSettings, Arg, SubCommand,
 };
@@ -28,7 +25,7 @@ fn list_users(conn: &Connection) -> Result<Vec<(String, String)>, Error> {
     Ok(res)
 }
 
-const CMD_CRATE: &str = "create";
+const CMD_CREATE: &str = "create";
 const CMD_ADD: &str = "add";
 const CMD_LIST: &str = "list";
 
@@ -47,7 +44,7 @@ fn main() -> Result<(), Error> {
             .help("Sets an address of db connection")
             .takes_value(true),
             )
-        .subcommand(SubCommand::with_name(CMD_CRATE).about("create users table"))
+        .subcommand(SubCommand::with_name(CMD_CREATE).about("create users table"))
         .subcommand(SubCommand::with_name(CMD_ADD).about("add user to the table")
                     .arg(Arg::with_name("NAME")
                          .help("Sets the name of a user")
@@ -65,7 +62,7 @@ fn main() -> Result<(), Error> {
     let conn = Connection::connect(addr, TlsMode::None)?;
 
     match matches.subcommand() {
-        (CMD_CRATE, _) => {
+        (CMD_CREATE, _) => {
             create_table(&conn)?;
         }
         (CMD_ADD, Some(matches)) => {
