@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "rust.microservices.ring";
+option java_outer_classname = "RingProto";
+option objc_class_prefix = "RING";
+
+package ringproto;
+
+message Empty { }
+
+service Ring {
+  rpc StartRollCall (Empty) returns (Empty);
+  rpc MarkItself (Empty) returns (Empty);
+}
