@@ -1,0 +1,12 @@
+[package]
+name = "profiled"
+version = "0.1.0"
+authors = ["Denis Kolodin <deniskolodin@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+flame = { version = "0.2.2", optional = true }
+
+[features]
+default = []
+flame_it = ["flame"]
