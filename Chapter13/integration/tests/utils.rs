@@ -116,7 +116,7 @@ const MAILER: &str = "http://localhost:8002";
 
 const CONTENT: &str = "http://localhost:8003";
 
-const ROUTER: &str = "http://localhost:8000";
+const ROUTER: &str = "http://localhost:8080";
 
 pub fn url(url: &str, path: &str) -> String {
     url.to_owned() + path
