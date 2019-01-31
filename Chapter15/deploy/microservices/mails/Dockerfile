@@ -1,4 +1,4 @@
-FROM rust:1.30.1
+FROM rust:nightly
 
 RUN USER=root cargo new --bin mails-microservice
 WORKDIR /mails-microservice

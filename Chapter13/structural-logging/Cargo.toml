@@ -1,0 +1,11 @@
+[package]
+name = "structural-logging"
+version = "0.1.0"
+authors = ["Denis Kolodin <deniskolodin@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+slog = "2.4"
+slog-async = "2.3"
+slog-json = "2.3"
+slog-term = "2.4"

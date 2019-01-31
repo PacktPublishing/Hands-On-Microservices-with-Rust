@@ -1,0 +1,77 @@
+# required for docker
+sudo: required
+
+# for more information on configuring a rust travis build
+# see https://docs.travis-ci.com/user/languages/rust/
+language: rust
+
+rust:
+  - stable
+  # for code coverage only
+  - nightly
+
+# only build pushes to master
+# prs are build separately
+# https://docs.travis-ci.com/user/pull-requests/#how-pull-requests-are-built
+branches:
+  only:
+  - master
+
+# Cache `cargo install`ed tools, but don't cache the project's `target`
+# directory (which ends up over-caching and filling all disk space!)
+# https://levans.fr/rust_travis_cache.html
+cache:
+  directories:
+    - /home/travis/.cargo
+    - node_modules
+
+before_cache:
+  # But don't cache the cargo registry
+  - rm -rf /home/travis/.cargo/registry
+
+services:
+  # start docker to enable lambda ci compatible build env
+  - docker
+
+addons:
+  apt:
+    packages:
+      # required by tarpaulin code coverage tool
+      - libssl-dev
+
+install: |
+  # https://github.com/xd009642/tarpaulin/issues/150
+  if [[ "$TRAVIS_RUST_VERSION" == nightly ]]; then
+    RUSTFLAGS="--cfg procmacro2_semver_exempt" cargo install cargo-tarpaulin -f
+  fi
+
+script:
+  # fail fast if build fails
+  - cargo check
+  # test changes to behavior
+  - cargo test
+  # package application here to cache build artifacts for future build/deploys
+  - npm i --silent && npx serverless package
+
+# report coverage to coveralls (on nightly)
+# see https://github.com/xd009642/tarpaulin for more information
+after_success: |
+  if [[ "$TRAVIS_RUST_VERSION" == nightly ]]; then
+    cargo tarpaulin --ciserver travis-ci --coveralls $TRAVIS_JOB_ID
+
+    # Uncomment the following two lines create and upload a report for codecov.io
+    # cargo tarpaulin --out Xml
+    # bash <(curl -s https://codecov.io/bash)
+  fi
+
+# deploy on pushes to master branch
+# assumes aws credentials (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)
+# are configured in travis settings
+# see https://serverless.com/framework/docs/providers/aws/guide/credentials/
+# for more information
+deploy:
+  - provider: script
+    script: npx serverless deploy --conceal
+    skip_cleanup: true
+    on:
+      branch: master

@@ -1,16 +1,4 @@
-extern crate bson;
-extern crate clap;
-extern crate chrono;
-extern crate failure;
-#[macro_use]
-extern crate mongodb;
-extern crate r2d2;
-extern crate r2d2_mongodb;
-#[macro_use]
-extern crate serde_derive;
-extern crate url;
-
-//use chrono::DateTime;
+use bson::{bson, doc};
 use chrono::offset::Utc;
 use clap::{
     crate_authors, crate_description, crate_name, crate_version, App, AppSettings, Arg, SubCommand,
@@ -19,6 +7,7 @@ use mongodb::Error;
 use mongodb::db::{Database, ThreadedDatabase};
 use r2d2::Pool;
 use r2d2_mongodb::{ConnectionOptionsBuilder, MongodbConnectionManager};
+use serde_derive::Deserialize;
 use url::Url;
 
 fn add_activity(conn: &Database, activity: Activity) -> Result<(), Error> {

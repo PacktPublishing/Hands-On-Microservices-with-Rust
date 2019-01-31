@@ -1,0 +1,27 @@
+{
+    "TableName" : "Locations",
+    "KeySchema": [
+        {
+            "AttributeName": "Uid",
+            "KeyType": "HASH"
+        },
+        {
+            "AttributeName": "TimeStamp",
+            "KeyType": "RANGE"
+        }
+    ],
+    "AttributeDefinitions": [
+        {
+            "AttributeName": "Uid",
+            "AttributeType": "S"
+        },
+        {
+            "AttributeName": "TimeStamp",
+            "AttributeType": "S"
+        }
+    ],
+    "ProvisionedThroughput": {
+        "ReadCapacityUnits": 1,
+        "WriteCapacityUnits": 1
+    }
+}

@@ -1,13 +1,7 @@
-extern crate slab;
-extern crate futures;
-extern crate hyper;
-extern crate regex;
-#[macro_use]
-extern crate lazy_static;
-
 use std::fmt;
 use std::sync::{Arc, Mutex};
 use slab::Slab;
+use lazy_static::lazy_static;
 use futures::{future, Future};
 use hyper::{Body, Error, Method, Request, Response, Server, StatusCode};
 use hyper::service::service_fn;

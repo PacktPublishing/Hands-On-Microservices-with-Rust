@@ -1,19 +1,13 @@
-#[macro_use]
-extern crate log;
-extern crate env_logger as logger;
-extern crate dotenv;
-extern crate hyper;
-extern crate rand;
-
-use std::env;
 use dotenv::dotenv;
 use hyper::{Body, Response, Server};
 use hyper::rt::Future;
 use hyper::service::service_fn_ok;
+use log::{debug, info, trace};
+use std::env;
 
 fn main() {
     dotenv().ok();
-    logger::init();
+    env_logger::init();
     info!("Rand Microservice - v0.1.0");
     trace!("Starting...");
     let addr = env::var("ADDRESS")

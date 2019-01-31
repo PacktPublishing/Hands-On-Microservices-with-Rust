@@ -1,18 +1,9 @@
-extern crate actix;
-extern crate actix_web;
-extern crate env_logger;
-extern crate failure;
-extern crate futures;
-extern crate log;
-extern crate serde;
-extern crate serde_derive;
-extern crate serde_urlencoded;
-
 use actix_web::{
     client, middleware, server, fs, App, Error, Form, HttpMessage,
-    HttpRequest, HttpResponse, FutureResponse,
+    HttpRequest, HttpResponse, FutureResponse, Result,
 };
 use actix_web::http::{self, header, StatusCode};
+use actix_web::middleware::{Finished, Middleware, Response, Started};
 use actix_web::middleware::identity::RequestIdentity;
 use actix_web::middleware::identity::{CookieIdentityPolicy, IdentityService};
 use failure::format_err;
@@ -20,6 +11,7 @@ use futures::{IntoFuture, Future};
 use log::{error};
 use serde::{Deserialize, Serialize};
 use serde_derive::{Deserialize, Serialize};
+use std::cell::RefCell;
 
 fn boxed<I, E, F>(fut: F) -> Box<Future<Item = I, Error = E>>
 where
@@ -28,7 +20,7 @@ where
     Box::new(fut)
 }
 
-fn get_req(url: &str) -> impl Future<Item = Vec<u8>, Error = Error> {
+fn get_request(url: &str) -> impl Future<Item = Vec<u8>, Error = Error> {
     client::ClientRequest::get(url)
         .finish().into_future()
         .and_then(|req| {
@@ -39,7 +31,7 @@ fn get_req(url: &str) -> impl Future<Item = Vec<u8>, Error = Error> {
         })
 }
 
-fn request<T, O>(url: &str, params: T) -> impl Future<Item = O, Error = Error>
+fn post_request<T, O>(url: &str, params: T) -> impl Future<Item = O, Error = Error>
 where
     T: Serialize,
     O: for <'de> Deserialize<'de> + 'static,
@@ -98,7 +90,7 @@ pub struct NewComment {
 }
 
 fn signup(params: Form<UserForm>) -> FutureResponse<HttpResponse> {
-    let fut = request("http://127.0.0.1:8001/signup", params.into_inner())
+    let fut = post_request("http://127.0.0.1:8001/signup", params.into_inner())
         .map(|_: ()| {
             HttpResponse::Found()
             .header(header::LOCATION, "/login.html")
@@ -107,8 +99,8 @@ fn signup(params: Form<UserForm>) -> FutureResponse<HttpResponse> {
     Box::new(fut)
 }
 
-fn signin((req, params): (HttpRequest, Form<UserForm>)) -> FutureResponse<HttpResponse> {
-    let fut = request("http://127.0.0.1:8001/signin", params.into_inner())
+fn signin((req, params): (HttpRequest<State>, Form<UserForm>)) -> FutureResponse<HttpResponse> {
+    let fut = post_request("http://127.0.0.1:8001/signin", params.into_inner())
         .map(move |id: UserId| {
             req.remember(id.id);
             HttpResponse::build_from(&req)
@@ -119,7 +111,7 @@ fn signin((req, params): (HttpRequest, Form<UserForm>)) -> FutureResponse<HttpRe
     Box::new(fut)
 }
 
-fn new_comment((req, params): (HttpRequest, Form<AddComment>)) -> FutureResponse<HttpResponse> {
+fn new_comment((req, params): (HttpRequest<State>, Form<AddComment>)) -> FutureResponse<HttpResponse> {
     let fut = req.identity()
         .ok_or(format_err!("not authorized").into())
         .into_future()
@@ -128,7 +120,7 @@ fn new_comment((req, params): (HttpRequest, Form<AddComment>)) -> FutureResponse
                 uid,
                 text: params.into_inner().text,
             };
-            request::<_, ()>("http://127.0.0.1:8003/new_comment", params)
+            post_request::<_, ()>("http://127.0.0.1:8003/new_comment", params)
         })
         .then(move |_| {
             let res = HttpResponse::build_from(&req)
@@ -140,12 +132,38 @@ fn new_comment((req, params): (HttpRequest, Form<AddComment>)) -> FutureResponse
     Box::new(fut)
 }
 
-fn comments(_req: HttpRequest) -> FutureResponse<HttpResponse> {
-    let fut = get_req("http://127.0.0.1:8003/list")
+fn comments(_req: HttpRequest<State>) -> FutureResponse<HttpResponse> {
+    let fut = get_request("http://127.0.0.1:8003/list")
         .map(|data| {
             HttpResponse::Ok().body(data)
         });
     Box::new(fut)
+}
+
+fn counter(req: HttpRequest<State>) -> String {
+    format!("{}", req.state().0.borrow())
+}
+
+
+#[derive(Default)]
+struct State(RefCell<i64>);
+
+pub struct Counter;
+
+impl Middleware<State> for Counter {
+    fn start(&self, req: &HttpRequest<State>) -> Result<Started> {
+        let value = *req.state().0.borrow();
+        *req.state().0.borrow_mut() = value + 1;
+        Ok(Started::Done)
+    }
+
+    fn response(&self, _req: &HttpRequest<State>, resp: HttpResponse) -> Result<Response> {
+        Ok(Response::Done(resp))
+    }
+
+    fn finish(&self, _req: &HttpRequest<State>, _resp: &HttpResponse) -> Finished {
+        Finished::Done
+    }
 }
 
 fn main() {
@@ -153,13 +171,14 @@ fn main() {
     let sys = actix::System::new("router");
 
     server::new(|| {
-        App::new()
+        App::with_state(State::default())
             .middleware(middleware::Logger::default())
             .middleware(IdentityService::new(
                     CookieIdentityPolicy::new(&[0; 32])
                     .name("auth-example")
                     .secure(false),
                     ))
+            .middleware(Counter)
             .scope("/api", |scope| {
                 scope
                     .route("/signup", http::Method::POST, signup)
@@ -167,6 +186,7 @@ fn main() {
                     .route("/new_comment", http::Method::POST, new_comment)
                     .route("/comments", http::Method::GET, comments)
             })
+            .route("/stats/counter", http::Method::GET, counter)
             .handler(
                 "/",
                 fs::StaticFiles::new("./static/").unwrap().index_file("index.html")

@@ -1,15 +1,8 @@
-extern crate clap;
-extern crate failure;
-extern crate r2d2;
-extern crate r2d2_redis;
-extern crate redis;
-
 use clap::{
     crate_authors, crate_description, crate_name, crate_version, App, AppSettings, Arg, SubCommand,
 };
-use redis::{Connection, RedisError};
+use redis::{Commands, Connection, RedisError};
 use r2d2_redis::RedisConnectionManager;
-use r2d2_redis::redis::Commands;
 use std::collections::HashMap;
 
 const SESSIONS: &str = "sessions";

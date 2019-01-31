@@ -1,0 +1,10 @@
+{
+  "devDependencies": {
+    "serverless": "^1.36.3",
+    "serverless-rust": "^0.2.0"
+  },
+  "name": "qotd",
+  "dependencies": {
+    "serverless-finch": "^2.3.2"
+  }
+}

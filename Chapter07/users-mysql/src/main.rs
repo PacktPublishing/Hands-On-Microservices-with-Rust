@@ -1,12 +1,3 @@
-extern crate clap;
-extern crate csv;
-extern crate failure;
-extern crate mysql;
-extern crate r2d2;
-extern crate r2d2_mysql;
-extern crate rayon;
-extern crate serde_derive;
-
 use clap::{
     crate_authors, crate_description, crate_name, crate_version, App, AppSettings, Arg, SubCommand,
 };

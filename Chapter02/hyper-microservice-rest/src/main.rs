@@ -1,7 +1,3 @@
-extern crate slab;
-extern crate futures;
-extern crate hyper;
-
 use std::fmt;
 use std::sync::{Arc, Mutex};
 use slab::Slab;
@@ -44,7 +40,7 @@ fn microservice_handler(req: Request<Body>, user_db: &UserDb)
                 Response::new(INDEX.into())
             },
             (method, path) if path.starts_with(USER_PATH) => {
-                let user_id = path.trim_left_matches(USER_PATH)
+                let user_id = path.trim_start_matches(USER_PATH)
                     .parse::<UserId>()
                     .ok()
                     .map(|x| x as usize);

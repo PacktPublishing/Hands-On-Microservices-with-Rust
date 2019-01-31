@@ -80,4 +80,4 @@ services:
       - ROUTER_USERS=http://users:8000
       - ROUTER_CONTENT=http://content:8000
     ports:
-      - 8000:8000
+      - 7000:8000

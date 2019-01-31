@@ -1,8 +1,5 @@
-extern crate clap;
 #[macro_use]
 extern crate diesel;
-extern crate failure;
-extern crate serde_derive;
 
 use clap::{
     crate_authors, crate_description, crate_name, crate_version, App, AppSettings, Arg, SubCommand,
@@ -67,7 +64,9 @@ fn main() -> Result<(), Error> {
         (CMD_LIST, _) => {
             use self::schema::users::dsl::*;
             let conn = pool.get()?;
-            let mut items = users
+            let items = users
+                .filter(email.like("%@example.com"))
+                .limit(10)
                 .load::<models::User>(&conn)?;
             for user in items {
                 println!("{:?}", user);

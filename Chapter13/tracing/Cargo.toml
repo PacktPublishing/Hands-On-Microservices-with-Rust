@@ -1,7 +1,9 @@
 [package]
-name = "hello-lambda"
+name = "tracing"
 version = "0.1.0"
 authors = ["Denis Kolodin <deniskolodin@gmail.com>"]
+edition = "2018"
 
 [dependencies]
-aws_lambda = { git = "https://github.com/srijs/rust-aws-lambda" }
+rustracing = "0.1"
+rustracing_jaeger = "0.1"
