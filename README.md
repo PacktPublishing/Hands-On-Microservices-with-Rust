@@ -10,12 +10,12 @@ This is the code repository for [Hands-On Microservices with Rust](https://www.p
 Microservice architecture is sweeping the world as the de facto pattern for building web-based applications. Rust is a language particularly well-suited for building microservices. It is a new system programming language that offers a practical and safe alternative to C.
 
 This book covers the following exciting features:
-Get acquainted with leveraging Rust web programming 
-Get to grips with various Rust crates, such as hyper, Tokio, and Actix 
-Explore RESTful microservices with Rust 
-Understand how to pack Rust code to a container using Docker 
-Familiarize yourself with Reactive microservices 
-Deploy your microservices to modern cloud platforms such as AWS 
+* Get acquainted with leveraging Rust web programming 
+* Get to grips with various Rust crates, such as hyper, Tokio, and Actix 
+* Explore RESTful microservices with Rust 
+* Understand how to pack Rust code to a container using Docker 
+* Familiarize yourself with Reactive microservices 
+* Deploy your microservices to modern cloud platforms such as AWS 
 
 If you feel this book is for you, get your [copy](https://www.amazon.com/dp/1789342759) today!
 
