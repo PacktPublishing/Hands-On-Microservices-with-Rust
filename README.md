@@ -10,12 +10,12 @@ This is the code repository for [Hands-On Microservices with Rust](https://www.p
 Microservice architecture is sweeping the world as the de facto pattern for building web-based applications. Rust is a language particularly well-suited for building microservices. It is a new system programming language that offers a practical and safe alternative to C.
 
 This book covers the following exciting features:
-* Get acquainted with leveraging Rust web programming 
-* Get to grips with various Rust crates, such as hyper, Tokio, and Actix 
-* Explore RESTful microservices with Rust 
-* Understand how to pack Rust code to a container using Docker 
-* Familiarize yourself with Reactive microservices 
-* Deploy your microservices to modern cloud platforms such as AWS 
+Get acquainted with leveraging Rust web programming 
+Get to grips with various Rust crates, such as hyper, Tokio, and Actix 
+Explore RESTful microservices with Rust 
+Understand how to pack Rust code to a container using Docker 
+Familiarize yourself with Reactive microservices 
+Deploy your microservices to modern cloud platforms such as AWS 
 
 If you feel this book is for you, get your [copy](https://www.amazon.com/dp/1789342759) today!
 
@@ -39,20 +39,15 @@ This book is for developers who have basic knowledge of RUST, and want to learn 
 
 With the following software and hardware list you can run all code files present in the book (Chapter 1-17).
 ### Software and Hardware List
-| Chapter | Software required | OS required |
-| -------- | ------------------------------------ | ----------------------------------- |
-|  |  | Windows, Mac OS X, and Linux (Any) |
-|  |  | Windows, Mac OS X, and Linux (Any) |
-|  |  | Windows, Mac OS X, and Linux (Any) |
-|  |  | Windows, Mac OS X, and Linux (Any) |
-|  |  | Windows, Mac OS X, and Linux (Any) |
-|  |  | Windows, Mac OS X, and Linux (Any) |
-|  |  | Windows, Mac OS X, and Linux (Any) |
-|  |  | Windows, Mac OS X, and Linux (Any) |
-|  |  | Windows, Mac OS X, and Linux (Any) |
-|  |  | Windows, Mac OS X, and Linux (Any) |
+| Chapter 	| Software required | OS required |
+| -------- 	| ------------------------------------ | ----------------------------------- |
+| 1-17		| Rust 1.31 										| Windows, Mac OS X, and Linux (Any) |
+| 1-17		| Docker CE (18.09.1) 								| Windows, Mac OS X, and Linux (Any) |
+| 1-17 		| Docker Compose (1.23.2)							| Windows, Mac OS X, and Linux (Any) |
+| 1-17 		| TeamCity (2018.2) - Professional Server License 	| Windows, Mac OS X, and Linux (Any) |
 
-We also provide a PDF file that has color images of the screenshots/diagrams used in this book. [Click here to download it]().
+
+We also provide a PDF file that has color images of the screenshots/diagrams used in this book. [Click here to download it](https://www.packtpub.com/sites/default/files/downloads/9781789342758_ColorImages.pdf﻿).
 
 ### Related products
 * Hands-On Concurrency with Rust [[Packt]](https://www.packtpub.com/application-development/hands-concurrency-rust?utm_source=github&utm_medium=repository&utm_campaign=9781788399975 ) [[Amazon]](https://www.amazon.com/dp/1788399978)
