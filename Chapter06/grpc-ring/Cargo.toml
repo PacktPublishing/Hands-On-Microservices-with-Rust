@@ -7,12 +7,12 @@ edition = "2018"
 [dependencies]
 env_logger = "0.6"
 failure = "0.1"
-grpc = { git = "https://github.com/stepancheg/grpc-rust" }
+grpc = { git = "https://github.com/stepancheg/grpc-rust", branch = "v0.6" }
 log = "0.4"
 protobuf = "2.2"
 
 [build-dependencies]
-protoc-rust-grpc = { git = "https://github.com/stepancheg/grpc-rust" }
+protoc-rust-grpc = { git = "https://github.com/stepancheg/grpc-rust", branch = "v0.6" }
 
 [[bin]]
 name = "grpc-ring"
