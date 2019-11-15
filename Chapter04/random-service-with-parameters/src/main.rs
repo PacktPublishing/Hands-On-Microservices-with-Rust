@@ -54,7 +54,7 @@ fn handle_request(request: RngRequest) -> RngResponse {
 }
 
 fn microservice_handler(req: Request<Body>)
-    -> Box<Future<Item=Response<Body>, Error=Error> + Send>
+    -> Box<dyn Future<Item=Response<Body>, Error=Error> + Send>
 {
     match (req.method(), req.uri().path()) {
         (&Method::GET, "/") | (&Method::GET, "/random") => {
