@@ -1,6 +1,8 @@
 use failure::Error;
 use jsonrpc::client::Client;
 use jsonrpc::error::Error as ClientError;
+use jsonrpc::simple_http::Builder;
+use jsonrpc::serde_json::value::RawValue;
 use jsonrpc_http_server::ServerBuilder;
 use jsonrpc_http_server::jsonrpc_core::{IoHandler, Error as ServerError, Value};
 use log::{debug, error, trace};
@@ -27,7 +29,11 @@ struct Remote {
 impl Remote {
     fn new(addr: SocketAddr) -> Self {
         let url = format!("http://{}", addr);
-        let client = Client::new(url, None, None);
+        let transport = Builder::new()
+            .url(&url)
+            .unwrap()
+            .build();
+        let client = Client::with_transport(transport);
         Self {
             client
         }
@@ -41,12 +47,12 @@ impl Remote {
         self.call_method(MARK_ITSELF, &[])
     }
 
-    fn call_method<T>(&self, meth: &str, args: &[Value]) -> Result<T, ClientError>
+    fn call_method<T>(&self, meth: &str, args: &[Box<RawValue>]) -> Result<T, ClientError>
     where
         T: for <'de> Deserialize<'de>,
     {
         let request = self.client.build_request(meth, args);
-        self.client.send_request(&request).and_then(|res| res.into_result::<T>())
+        self.client.send_request(request).and_then(|res| res.result::<T>())
     }
 }
 
@@ -98,7 +104,7 @@ fn main() -> Result<(), Error> {
     let addr: SocketAddr = env::var("ADDRESS")?.parse()?;
     let mut io = IoHandler::default();
     let sender = Mutex::new(tx.clone());
-    io.add_method(START_ROLL_CALL, move |_| {
+    io.add_sync_method(START_ROLL_CALL, move |_| {
         trace!("START_ROLL_CALL");
         let tx = sender
             .lock()
@@ -108,7 +114,7 @@ fn main() -> Result<(), Error> {
             .map(|_| Value::Bool(true))
     });
     let sender = Mutex::new(tx.clone());
-    io.add_method(MARK_ITSELF, move |_| {
+    io.add_sync_method(MARK_ITSELF, move |_| {
         trace!("MARK_ITSELF");
         let tx = sender
             .lock()
