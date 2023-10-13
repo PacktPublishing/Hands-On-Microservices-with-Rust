@@ -64,8 +64,6 @@ services:
       - ROCKET_ADDRESS=0.0.0.0
       - ROCKET_PORT=8000
       - ROCKET_DATABASES={postgres_database={url="postgresql://postgres:password@db:5432"}}
-    ports:
-      - 8003:8000
   router:
     build: ./microservices/router
     depends_on:
@@ -79,5 +77,3 @@ services:
       - ROUTER_ADDRESS=0.0.0.0:8000
       - ROUTER_USERS=http://users:8000
       - ROUTER_CONTENT=http://content:8000
-    ports:
-      - 7000:8000
